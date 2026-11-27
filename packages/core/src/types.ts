@@ -10,7 +10,7 @@ export interface InstallDocOptions {
 }
 export interface LoomConfig {
   version: 1;
-  skills: { name: string; source: string; entry?: string }[];
+  skills?: { name: string; source: string; entry?: string }[];
   output?: string;
   baseUrl?: string;
   commonNotice?: CommonNoticeItem | CommonNoticeItem[];
@@ -29,7 +29,11 @@ export interface LoomConfig {
     files?: string[];
   }[];
 }
-export type LoadedConfig = LoomConfig & { output: string; rootDir: string };
+export type LoadedConfig = LoomConfig & {
+  skills: NonNullable<LoomConfig['skills']>;
+  output: string;
+  rootDir: string;
+};
 export interface Logger {
   info(message: string): void;
   warn(message: string): void;

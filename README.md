@@ -45,13 +45,13 @@ my-skills/
 │   └── notice.md
 └── src/skills/
     ├── pr-review/
-    │   ├── SKILL.md
+    │   ├── SKILL.source.md
     │   └── references/checklist.md
     └── release-notes/
-        └── SKILL.md
+        └── SKILL.source.md
 ```
 
-`SKILL.md` 的 frontmatter 必须包含 `name`（与配置里的 `name` 一致）和 `metadata.version`（合法 SemVer）：
+`SKILL.source.md` 的 frontmatter 必须包含与目录名一致的 `name`，以及合法 SemVer 格式的 `metadata.version`：
 
 ```markdown
 ---
@@ -75,10 +75,6 @@ import preflight from '@u1in/loom-plugin-preflight';
 
 export default defineConfig({
   version: 1,
-  skills: [
-    { name: 'pr-review', source: 'src/skills/pr-review' },
-    { name: 'release-notes', source: 'src/skills/release-notes' },
-  ],
   commonNotice: { file: 'partials/notice.md' },
   variables: { PROJECT_NAME: 'MyProject' },
   injections: {
@@ -132,7 +128,7 @@ skills/pr-review/
 | 字段 | 必填 | 说明 |
 |---|---|---|
 | `version` | ✓ | 固定为字面量 `1` |
-| `skills` | ✓ | `{ name, source }[]`，`name` 唯一且匹配 `^[a-z0-9][a-z0-9-]*$` |
+| `skills` | | 省略时发现 `src/skills/*/SKILL.source.md`；可显式提供 `{ name, source, entry? }[]`，`name` 唯一且匹配 `^[a-z0-9][a-z0-9-]*$` |
 | `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义插值变量，不可与 `name` / `skill` / `version` 重名 |
@@ -267,15 +263,17 @@ variables: { BASE: 'https://example.com' },
 
 默认以 Skill 正文的第一个标题为基准，将每段公共说明中最浅的标题调整为其下一级，其余标题保持相对层级。Skill 或公共说明没有标题时保持原样。`headingShift` 可显式指定 0 到 5 的整数，覆盖自动调整。调整后超出一级至六级时构建失败。相对路径以配置文件目录为准。正文、链接、图片及引用链接的目标支持 `{{BASE}}` 等变量插值。设置 `metadata.loom.commonNotice: false` 时跳过全部公共说明。
 
-### 自定义源码入口
+### 源码目录和入口
 
-每个 Skill 可使用 `entry` 指定源码目录内的 Markdown 文件名：
+省略 `skills` 时，Loom 在配置目录下查找 `src/skills/*/SKILL.source.md`，以一级子目录名作为 Skill 名，默认输出到 `skills/<name>/SKILL.md`。没有符合约定的入口时，构建会报错。
+
+使用其他目录或入口文件名时，可以显式配置 `skills`：
 
 ```ts
 skills: [{ name: 'demo', source: 'src/skills/demo', entry: 'SKILL.source.md' }],
 ```
 
-省略时读取 `SKILL.md`。入口文件不直接复制到产物，Loom 将处理后的内容写成标准的 `SKILL.md`。文件名不允许包含目录或路径穿越。
+显式列出的 Skill 省略 `entry` 时读取源码目录内的 `SKILL.md`。Loom 将处理后的入口统一写成 `SKILL.md`。`entry` 只接受文件名。
 
 ### Markdown 链接地址
 

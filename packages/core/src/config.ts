@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createJiti } from 'jiti';
+import fg from 'fast-glob';
 import { access } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -44,7 +45,8 @@ const schema = z
           })
           .strict(),
       )
-      .min(1),
+      .min(1)
+      .optional(),
     output: z.string().min(1).default('.'),
     baseUrl: z
       .string()
@@ -103,8 +105,8 @@ const schema = z
   })
   .strict()
   .superRefine((c, ctx) => {
-    const names = c.skills.map((s) => s.name);
-    if (new Set(names).size !== names.length)
+    const names = new Set(c.skills?.map((s) => s.name));
+    if (c.skills && names.size !== c.skills.length)
       ctx.addIssue({ code: 'custom', path: ['skills'], message: 'Skill names must be unique' });
     for (const k of Object.keys(c.variables ?? {}))
       if (['name', 'skill', 'version'].includes(k))
@@ -137,6 +139,7 @@ const schema = z
         });
       }
     }
+    if (!c.skills) return;
     for (const item of [
       ...(c.injections?.text ?? []),
       ...(c.injections?.metadata ?? []),
@@ -144,8 +147,7 @@ const schema = z
       ...(typeof c.installDoc === 'object' ? [c.installDoc] : []),
     ])
       for (const name of item.skills ?? [])
-        if (!names.includes(name))
-          ctx.addIssue({ code: 'custom', message: 'Unknown skill: ' + name });
+        if (!names.has(name)) ctx.addIssue({ code: 'custom', message: 'Unknown skill: ' + name });
   });
 export const defineConfig = ((
   input: LoomConfig | Promise<LoomConfig> | (() => LoomConfig | Promise<LoomConfig>),
@@ -159,6 +161,21 @@ export const defineConfig = ((
   (
     input: Promise<LoomConfig> | (() => LoomConfig | Promise<LoomConfig>),
   ): LoomConfig | Promise<LoomConfig>;
+};
+const discoverSkills = async (rootDir: string): Promise<LoadedConfig['skills']> => {
+  const sourceRoot = 'src/skills';
+  const entry = 'SKILL.source.md';
+  const entries = await fg('*/' + entry, {
+    cwd: path.join(rootDir, sourceRoot),
+    onlyFiles: true,
+    followSymbolicLinks: false,
+  });
+  if (!entries.length)
+    throw new Error('No skills found. Expected ' + sourceRoot + '/<name>/' + entry);
+  return entries.sort().map((file) => {
+    const name = path.posix.dirname(file);
+    return { name, source: sourceRoot + '/' + name, entry };
+  });
 };
 let configImportCounter = 0;
 export const loadConfig = async (cwd = process.cwd()): Promise<LoadedConfig> => {
@@ -186,7 +203,10 @@ export const loadConfig = async (cwd = process.cwd()): Promise<LoadedConfig> => 
     };
     const input = typeof mod.default === 'function' ? mod.default() : mod.default;
     const config = await defineConfig(await input);
-    return { ...config, output: config.output ?? '.', rootDir: path.dirname(file) };
+    const rootDir = path.dirname(file);
+    const skills = config.skills ?? (await discoverSkills(rootDir));
+    if (!config.skills) schema.parse({ ...config, skills });
+    return { ...config, skills, output: config.output ?? '.', rootDir };
   } catch (e) {
     throw new Error('Failed to load config ' + file + ': ' + String(e), { cause: e });
   }

@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { defineConfig, loadConfig } from '../src/config';
+import { build } from '../src/pipeline';
 const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
@@ -20,6 +21,55 @@ describe('configuration', () => {
       expect(config.rootDir).toBe(root);
       expect(config.output).toBe('.');
     }
+  });
+  it('discovers and builds direct Skill source entries when skills is omitted', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'loom-config-'));
+    roots.push(root);
+    await writeFile(
+      path.join(root, 'loom.config.mjs'),
+      "export default {version: 1, installDoc: {skills: ['alpha']}};",
+    );
+    for (const name of ['zeta', 'alpha']) {
+      const source = path.join(root, 'src/skills', name);
+      await mkdir(source, { recursive: true });
+      await writeFile(
+        path.join(source, 'SKILL.source.md'),
+        '---\nname: ' + name + '\nmetadata:\n  version: 1.0.0\n---\n\n# Skill\n',
+      );
+    }
+    for (const file of ['notes/README.md', 'legacy/SKILL.md', 'group/nested/SKILL.source.md']) {
+      const location = path.join(root, 'src/skills', file);
+      await mkdir(path.dirname(location), { recursive: true });
+      await writeFile(location, 'Ignored');
+    }
+    const config = await loadConfig(root);
+    expect(config.skills).toEqual([
+      { name: 'alpha', source: 'src/skills/alpha', entry: 'SKILL.source.md' },
+      { name: 'zeta', source: 'src/skills/zeta', entry: 'SKILL.source.md' },
+    ]);
+    await build(config, { skill: 'alpha' });
+    await expect(readFile(path.join(root, 'skills/alpha/SKILL.md'), 'utf8')).resolves.toContain(
+      'name: alpha',
+    );
+    await expect(readFile(path.join(root, 'skills/alpha/SKILL.source.md'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    await expect(readFile(path.join(root, 'skills/zeta/SKILL.md'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+  });
+  it('reports missing conventional sources and validates scopes after discovery', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'loom-config-'));
+    roots.push(root);
+    await writeFile(
+      path.join(root, 'loom.config.mjs'),
+      "export default {version: 1, installDoc: {skills: ['missing']}};",
+    );
+    await expect(loadConfig(root)).rejects.toThrow('Expected src/skills/<name>/SKILL.source.md');
+    const source = path.join(root, 'src/skills/demo');
+    await mkdir(source, { recursive: true });
+    await writeFile(path.join(source, 'SKILL.source.md'), '# Skill');
+    await expect(loadConfig(root)).rejects.toThrow('Unknown skill: missing');
   });
   it('accepts safe custom entries and rejects paths outside the skill', () => {
     expect(
