@@ -9,7 +9,6 @@ export interface InstallDocOptions {
   skills?: string[];
 }
 export interface LoomConfig {
-  version: 1;
   skills?: { name: string; source: string; entry?: string }[];
   output?: string;
   baseUrl?: string;

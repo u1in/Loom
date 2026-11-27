@@ -20,7 +20,6 @@ const fixture = async () => {
   );
   await writeFile(path.join(root, 'src', 'asset.txt'), 'TOKEN\r\n');
   const config: LoadedConfig = {
-    version: 1,
     rootDir: root,
     output: 'dist',
     skills: [{ name: 'demo', source: 'src' }],
@@ -302,7 +301,6 @@ describe('build', () => {
   it('rejects bad configuration and preserves author-written comments', async () => {
     expect(() =>
       defineConfig({
-        version: 1,
         skills: [{ name: 'demo', source: 'src' }],
         variables: { name: 'bad' },
       }),

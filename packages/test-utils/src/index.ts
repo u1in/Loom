@@ -10,7 +10,6 @@ import type {
 import type { Root } from 'mdast';
 export const createTestBuildContext = (overrides: Partial<BuildContext> = {}): BuildContext => ({
   config: {
-    version: 1,
     skills: [{ name: 'test', source: '.' }],
     output: '.',
     rootDir: process.cwd(),

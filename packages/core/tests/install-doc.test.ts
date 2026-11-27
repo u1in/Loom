@@ -21,7 +21,6 @@ const fixture = async (installDoc: LoadedConfig['installDoc']) => {
   await mkdir(path.join(root, 'src'));
   await writeFile(path.join(root, 'src', 'SKILL.md'), skillSource);
   const config: LoadedConfig = {
-    version: 1,
     rootDir: root,
     output: 'dist',
     skills: [{ name: 'demo', source: 'src' }],

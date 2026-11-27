@@ -1,7 +1,6 @@
 import { defineConfig } from '@u1in/loom-core';
 import preflight from '@u1in/loom-plugin-preflight';
 export default defineConfig({
-  version: 1,
   skills: [
     { name: 'pr-review', source: 'src/skills/pr-review' },
     { name: 'release-notes', source: 'src/skills/release-notes' },

@@ -74,7 +74,6 @@ import { defineConfig } from '@u1in/loom-core';
 import preflight from '@u1in/loom-plugin-preflight';
 
 export default defineConfig({
-  version: 1,
   commonNotice: { file: 'partials/notice.md' },
   variables: { PROJECT_NAME: 'MyProject' },
   injections: {
@@ -127,7 +126,6 @@ skills/pr-review/
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
-| `version` | ✓ | 固定为字面量 `1` |
 | `skills` | | 省略时发现 `src/skills/*/SKILL.source.md`；可显式提供 `{ name, source, entry? }[]`，`name` 唯一且匹配 `^[a-z0-9][a-z0-9-]*$` |
 | `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |

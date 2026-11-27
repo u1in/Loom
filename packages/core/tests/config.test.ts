@@ -15,7 +15,7 @@ describe('configuration', () => {
       roots.push(root);
       await writeFile(
         path.join(root, 'loom.config.' + ext),
-        "export default async () => ({version: 1, skills: [{name:'demo',source:'src'}]});",
+        "export default async () => ({skills: [{name:'demo',source:'src'}]});",
       );
       const config = await loadConfig(root);
       expect(config.rootDir).toBe(root);
@@ -27,7 +27,7 @@ describe('configuration', () => {
     roots.push(root);
     await writeFile(
       path.join(root, 'loom.config.mjs'),
-      "export default {version: 1, installDoc: {skills: ['alpha']}};",
+      "export default {installDoc: {skills: ['alpha']}};",
     );
     for (const name of ['zeta', 'alpha']) {
       const source = path.join(root, 'src/skills', name);
@@ -63,7 +63,7 @@ describe('configuration', () => {
     roots.push(root);
     await writeFile(
       path.join(root, 'loom.config.mjs'),
-      "export default {version: 1, installDoc: {skills: ['missing']}};",
+      "export default {installDoc: {skills: ['missing']}};",
     );
     await expect(loadConfig(root)).rejects.toThrow('Expected src/skills/<name>/SKILL.source.md');
     const source = path.join(root, 'src/skills/demo');
@@ -74,26 +74,25 @@ describe('configuration', () => {
   it('accepts safe custom entries and rejects paths outside the skill', () => {
     expect(
       defineConfig({
-        version: 1,
         skills: [{ name: 'demo', source: 'src', entry: 'SKILL.source.md' }],
       }),
     ).toMatchObject({ skills: [{ entry: 'SKILL.source.md' }] });
     expect(() =>
-      defineConfig({ version: 1, skills: [{ name: 'demo', source: 'src', entry: '../SKILL.md' }] }),
+      defineConfig({ skills: [{ name: 'demo', source: 'src', entry: '../SKILL.md' }] }),
     ).toThrow();
   });
   it('validates baseUrl as an HTTP URL without a query or fragment', () => {
     const skills = [{ name: 'demo', source: 'src' }];
-    expect(
-      defineConfig({ version: 1, skills, baseUrl: 'https://example.com/skills/{{name}}/' }),
-    ).toMatchObject({ baseUrl: 'https://example.com/skills/{{name}}/' });
+    expect(defineConfig({ skills, baseUrl: 'https://example.com/skills/{{name}}/' })).toMatchObject(
+      { baseUrl: 'https://example.com/skills/{{name}}/' },
+    );
     for (const baseUrl of [
       'relative/path',
       'file:///tmp/',
       'https://example.com/?q=1',
       'https://example.com/#part',
     ]) {
-      expect(() => defineConfig({ version: 1, skills, baseUrl })).toThrow();
+      expect(() => defineConfig({ skills, baseUrl })).toThrow();
     }
   });
   it('reloads mjs configuration for determinism checks', async () => {
@@ -101,7 +100,7 @@ describe('configuration', () => {
     roots.push(root);
     await writeFile(
       path.join(root, 'loom.config.mjs'),
-      "export default {version: 1, skills: [{name:'demo',source:'src'}], variables: {VALUE: String(Math.random())}};",
+      "export default {skills: [{name:'demo',source:'src'}], variables: {VALUE: String(Math.random())}};",
     );
     const first = await loadConfig(root);
     const second = await loadConfig(root);
@@ -111,11 +110,12 @@ describe('configuration', () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'loom-config-'));
     roots.push(root);
     await expect(loadConfig(root)).rejects.toThrow('No loom.config');
-    await writeFile(path.join(root, 'loom.config.ts'), 'export default {version: 2};');
-    await expect(loadConfig(root)).rejects.toThrow('Failed to load config');
+    await writeFile(path.join(root, 'loom.config.ts'), 'export default {version: 1};');
+    await expect(loadConfig(root)).rejects.toThrow(
+      /Failed to load config[\s\S]*Unrecognized key.*version/,
+    );
     expect(() =>
       defineConfig({
-        version: 1,
         skills: [
           { name: 'demo', source: 'src' },
           { name: 'demo', source: 'src' },

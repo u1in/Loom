@@ -16,7 +16,6 @@ import { defineConfig } from '@u1in/loom-core';
 import envProbe from '@u1in/loom-plugin-env-probe';
 
 export default defineConfig({
-  version: 1,
   skills: [{ name: 'pr-review', source: 'src/skills/pr-review' }],
   plugins: [
     envProbe({

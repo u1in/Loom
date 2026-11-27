@@ -31,7 +31,6 @@ const installDoc = z.union([
 ]);
 const schema = z
   .object({
-    version: z.literal(1),
     skills: z
       .array(
         z

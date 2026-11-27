@@ -18,7 +18,6 @@ it('generates per-skill preflight content, metadata, and interpolated scripts', 
   );
   await writeFile(path.join(root, 'template.js'), '// {{name}} {{version}} {{PROJECT}}\n');
   await build({
-    version: 1,
     rootDir: root,
     output: 'dist',
     skills: [{ name: 'demo', source: 'src' }],
