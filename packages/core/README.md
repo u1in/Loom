@@ -73,6 +73,7 @@ loom --help
 | `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义变量，键不可为 `name` / `skill` / `version` |
+| `installDoc` | | `true` 或配置对象，为每个 Skill 生成安装文档 |
 | `injections.text` | | `{ id, position, skills?, content }[]`，`id` 唯一 |
 | `injections.metadata` | | `{ skills?, path, value }[]`，`value` 必须可 JSON 序列化 |
 | `plugins` | | `LoomPlugin` 实例数组 |
@@ -86,6 +87,17 @@ loom --help
 
 `injections.text` 的 `content` 可为字符串或 `{ file }`，支持 `top` / `bottom` 位置以及可选的 `skills` 范围；文本参与变量插值和替换。构建始终从源码生成，不为注入内容添加 HTML 注释。`injections.metadata` 将 JSON 值按点号路径写入 `metadata.loom.injections`，不进行插值或替换。
 
+## 安装文档
+
+`installDoc: true` 为每个 Skill 生成一句面向当前 harness 的中文安装指引，默认输出到 `INSTALL.md`。
+
+- Loom 从 GitLab 或 GitHub 的 raw 发布地址推导安装链接，保留分支或标签以及 Skill 目录。`source` 可覆盖推导结果，支持 `{{name}}` 等变量。缺少来源时，构建会告警，默认文案提示从当前目录安装。
+- `file` 改输出文件名，必须是 Skill 根目录下的 `.md` 文件名。
+- `template` 指定模板文件，`text` 直接内联模板，二者互斥。模板支持 `{{name}}`、`{{skill}}`、`{{version}}`、`{{description}}`、`{{source}}` 与 `variables`。未定义变量原样保留并告警。
+- `skills` 限定生效范围。
+
+生成的文档与其他 Markdown 一样参与 `baseUrl` 链接补全和 `--check`。源码或构建产物已有同名文件时跳过并告警。
+
 ## 构建管线
 
 每个 Skill 的处理顺序是固定的：
@@ -93,7 +105,7 @@ loom --help
 ```text
 loadConfig（jiti 加载，失败时带上文件路径与原始错误）
   → validatePlugins
-  → 注册内置 injections → 逐个 await plugin.apply(api)
+  → 注册内置 injections / install-doc → 逐个 await plugin.apply(api)
   → onBuildStart
   → for each skill:
       onSkillStart
@@ -185,7 +197,7 @@ const plugin: LoomPlugin = {
 - 变换应为纯函数，除 `ctx.env` 的环境快照外不读取其他外部状态。
 - 第三方插件无沙箱，运行在本机进程内。
 
-`TransformContext` 提供 `skillName`、`version`、`variables`、`config`、`logger` 和 `interpolate(text)`；`SkillContext` 的 `tree` / `metadata` 是实时 getter，指向当前构建状态。
+`TransformContext` 提供 `skillName`、`version`、`variables`、`config`、`logger` 和 `interpolate(text)`；`SkillContext` 的 `tree` / `metadata` 是实时 getter，指向当前构建状态。`EmitContext` 同样以 getter 暴露 `metadata`（已完成 metadata transform 的 frontmatter），可据此读取 `description` 等字段。
 
 ### 插件类型与分发
 

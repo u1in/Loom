@@ -12,6 +12,22 @@ const noticeItem = z.union([
     .strict(),
 ]);
 const scope = z.array(z.string()).optional();
+const installDoc = z.union([
+  z.boolean(),
+  z
+    .object({
+      file: z
+        .string()
+        .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*\.md$/)
+        .optional(),
+      source: z.string().min(1).optional(),
+      template: z.string().min(1).optional(),
+      text: z.string().min(1).optional(),
+      skills: scope,
+    })
+    .strict()
+    .refine((v) => !(v.template && v.text), 'template and text are mutually exclusive'),
+]);
 const schema = z
   .object({
     version: z.literal(1),
@@ -41,6 +57,7 @@ const schema = z
       .optional(),
     commonNotice: z.union([noticeItem, z.array(noticeItem)]).optional(),
     variables: z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string()).optional(),
+    installDoc: installDoc.optional(),
     injections: z
       .object({
         text: z
@@ -124,6 +141,7 @@ const schema = z
       ...(c.injections?.text ?? []),
       ...(c.injections?.metadata ?? []),
       ...(c.replacements ?? []),
+      ...(typeof c.installDoc === 'object' ? [c.installDoc] : []),
     ])
       for (const name of item.skills ?? [])
         if (!names.includes(name))

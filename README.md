@@ -136,6 +136,7 @@ skills/pr-review/
 | `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义插值变量，不可与 `name` / `skill` / `version` 重名 |
+| `installDoc` | | 为每个 Skill 生成安装文档，`true` 或 `{ file, source, template, text, skills }` |
 | `injections.text` | | 文本注入，`position` 为 `top` 或 `bottom`，参与插值与替换 |
 | `injections.metadata` | | 写入 `metadata.loom.injections.<path>`，支持点号路径 |
 | `plugins` | | `LoomPlugin` 实例数组 |
@@ -147,7 +148,7 @@ skills/pr-review/
 
 | 包 | 作用 |
 |---|---|
-| `@u1in/loom-core` | 构建管线、PluginAPI、CLI、`defineConfig`，内置 `injections` |
+| `@u1in/loom-core` | 构建管线、PluginAPI、CLI、`defineConfig`，内置 `injections` 与 `installDoc` |
 | `@u1in/loom-plugin-preflight` | 注入“使用前检查”章节与 `metadata.loom.preflight`，可选发射检查脚本 |
 | `@u1in/loom-plugin-env-probe` | 探测构建环境，支持 `print` / `metadata` / `file` 三种模式 |
 | `@u1in/loom-test-utils` | 插件作者用的测试上下文与注册收集器 |
@@ -287,3 +288,23 @@ baseUrl: 'https://example.com/skills/{{name}}/',
 `baseUrl` 是每个 Skill 发布目录的 HTTP(S) 地址，可使用 `{{name}}` 等变量。子目录中的 Markdown 链接相对于该文件解析，查询参数和章节锚点保留。仅含 `#锚点` 的链接、带协议的地址以及以 `//` 开头的地址保持原样。根路径链接按网站根目录解析。未设置时保留原链接并继续检查本地相对链接。
 
 链接转为绝对地址后，访问引用内容需要访问对应网站，包括链接到随 Skill 分发资源的情况。
+
+### 安装文档
+
+启用 `installDoc: true` 后，Loom 为每个 Skill 生成一句面向当前 harness 的中文安装指引，默认输出到 `INSTALL.md`。
+
+```ts
+installDoc: true,
+```
+
+生成的 Markdown 形如：
+
+```markdown
+请使用 `skills` CLI，从 [https://github.com/OWNER/REPO/tree/skills-release/skills/pr-review](https://github.com/OWNER/REPO/tree/skills-release/skills/pr-review) 将 `pr-review` 安装到当前 harness。
+```
+
+Loom 从 GitLab 或 GitHub 的 raw 发布地址推导安装链接，保留分支或标签以及 Skill 目录。使用 CDN 或其他来源时，设置 `installDoc.source` 指定安装地址，支持 `{{name}}` 等变量。缺少可推导的来源时，构建会告警，默认文案提示从当前目录安装。
+
+可选的 `template` 或 `text` 可覆盖默认文案。模板支持 `{{name}}`、`{{skill}}`、`{{version}}`、`{{description}}`、`{{source}}` 和配置中的 `variables`。`file` 可改文件名，`skills` 可限定生效范围。
+
+生成的文档与其他 Markdown 产物一样参与 `baseUrl` 链接补全和 `--check`。源码或构建产物已有同名文件时跳过并告警。

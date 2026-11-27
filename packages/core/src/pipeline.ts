@@ -33,6 +33,7 @@ import type {
   TransformContext,
 } from './types';
 import { validatePlugins } from './plugin';
+import { DEFAULT_INSTALL_DOC, deriveSource, renderInstallDoc } from './install-doc';
 
 const processor = unified()
   .use(parse)
@@ -195,6 +196,7 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
         });
     },
   };
+  const installOptions = config.installDoc === true ? {} : config.installDoc;
   for (const plugin of [builtin, ...plugins])
     try {
       await plugin.apply(apiFor(plugin.name));
@@ -374,6 +376,34 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
           : Buffer.from(replace(normalize(bytes.toString('utf8')), file));
         files.set(file, { data, mode: (await stat(path.join(source, file))).mode });
       }
+    const baseUrl = config.baseUrl && interpolate(config.baseUrl);
+    if (installOptions && applies(installOptions.skills, skill.name)) {
+      const file = safePath(installOptions.file ?? DEFAULT_INSTALL_DOC);
+      if (file === entry || files.has(file)) {
+        logger.warn(skill.name + ': ' + file + ' exists in source or output, install doc skipped');
+      } else {
+        const template = installOptions.template
+          ? await readFile(path.resolve(config.rootDir, installOptions.template), 'utf8')
+          : installOptions.text;
+        const installSource = installOptions.source
+          ? interpolate(installOptions.source)
+          : deriveSource(baseUrl);
+        if (!installSource)
+          logger.warn(
+            skill.name + ': install source is unknown, set installDoc.source to provide it',
+          );
+        const document = renderInstallDoc({
+          name: skill.name,
+          version,
+          description: typeof fm.description === 'string' ? fm.description : undefined,
+          source: installSource,
+          template,
+          variables: config.variables,
+          warn: logger.warn,
+        });
+        files.set(file, { data: Buffer.from(document) });
+      }
+    }
     const emitCtx: EmitContext = {
       skillName: skill.name,
       version,
@@ -395,9 +425,8 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
     for (const [file, value] of files)
       if (file.endsWith('.md')) {
         const links = processor.parse(value.data.toString('utf8'));
-        if (config.baseUrl) {
-          const base = interpolate(config.baseUrl);
-          const directoryUrl = new URL(base.endsWith('/') ? base : base + '/');
+        if (baseUrl) {
+          const directoryUrl = new URL(baseUrl.endsWith('/') ? baseUrl : baseUrl + '/');
           const documentUrl = new URL(
             file.split('/').map(encodeURIComponent).join('/'),
             directoryUrl,

@@ -1,6 +1,13 @@
 import type { Root } from 'mdast';
 export type Content = string | { file: string };
 export type CommonNoticeItem = string | { file: string; headingShift?: number };
+export interface InstallDocOptions {
+  file?: string;
+  source?: string;
+  template?: string;
+  text?: string;
+  skills?: string[];
+}
 export interface LoomConfig {
   version: 1;
   skills: { name: string; source: string; entry?: string }[];
@@ -8,6 +15,7 @@ export interface LoomConfig {
   baseUrl?: string;
   commonNotice?: CommonNoticeItem | CommonNoticeItem[];
   variables?: Record<string, string>;
+  installDoc?: boolean | InstallDocOptions;
   injections?: {
     text?: { id: string; position: 'top' | 'bottom'; skills?: string[]; content: Content }[];
     metadata?: { skills?: string[]; path: string; value: unknown }[];
