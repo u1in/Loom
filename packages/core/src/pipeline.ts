@@ -124,11 +124,11 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
       platform: process.platform,
       arch: process.arch,
       cwd: config.rootDir,
-      loomVersion: '0.1.0',
+      loomVersion: '0.2.0',
     },
     variables: config.variables ?? {},
     logger,
-    loomVersion: '0.1.0',
+    loomVersion: '0.2.0',
   };
   const before: Entry<Transform>[] = [],
     after: Entry<Transform>[] = [],
@@ -270,11 +270,20 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
     await runHooks(skillStart, skillCtx, 'onSkillStart');
     let topPosition = 1;
     if (config.commonNotice && obj(obj(fm.metadata).loom).commonNotice !== false) {
-      const notice = processor.parse(
-        await readContent(config.commonNotice, config.rootDir),
-      ).children;
-      tree.children.splice(topPosition, 0, ...notice);
-      topPosition += notice.length;
+      const notices = Array.isArray(config.commonNotice)
+        ? config.commonNotice
+        : [config.commonNotice];
+      for (const item of notices) {
+        const noticeTree = processor.parse(await readContent(item, config.rootDir));
+        const shift = typeof item === 'string' ? 0 : (item.headingShift ?? 0);
+        visit(noticeTree, 'heading', (node) => {
+          const depth = node.depth + shift;
+          if (depth > 6) throw new Error(skill.name + ': common notice heading exceeds level 6');
+          node.depth = depth as typeof node.depth;
+        });
+        tree.children.splice(topPosition, 0, ...noticeTree.children);
+        topPosition += noticeTree.children.length;
+      }
     }
     topPositions.set(tctx, topPosition);
     const transform = async (entries: Entry<Transform>[], phase: string) => {
@@ -303,6 +312,8 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
     visit(tree, (node) => {
       if (node.type === 'text' || node.type === 'inlineCode' || node.type === 'code')
         node.value = replace(node.value, 'SKILL.md');
+      if (node.type === 'link' || node.type === 'image' || node.type === 'definition')
+        node.url = interpolate(node.url);
     });
     await transform(after, 'after-replace');
     for (const entry of metadataTransforms) {

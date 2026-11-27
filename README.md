@@ -134,7 +134,7 @@ dist/skills/pr-review/
 | `version` | ✓ | 固定为字面量 `1` |
 | `skills` | ✓ | `{ name, source }[]`，`name` 唯一且匹配 `^[a-z0-9][a-z0-9-]*$` |
 | `output` | | 输出目录，默认 `dist` |
-| `commonNotice` | | 公共说明，字符串或 `{ file }` |
+| `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义插值变量，不可与 `name` / `skill` / `version` 重名 |
 | `injections.text` | | 文本注入，`position` 为 `top` 或 `bottom`，参与插值与替换 |
 | `injections.metadata` | | 写入 `metadata.loom.injections.<path>`，支持点号路径 |
@@ -236,13 +236,13 @@ pnpm release            # 发布 packages/*
 
 示例项目 `demo-repo` 在 changesets 的 `ignore` 列表中，不参与发布。
 
-## 发布 0.1.0 前检查
+## 发布前检查
 
 四个公开包使用 `@u1in/loom-*` 命名空间。发布前确认 npm 账号权限、GitHub 仓库和 MIT 许可证配置：
 
 1. 在 Node.js 20 或更高版本下运行 `pnpm install --frozen-lockfile`、`pnpm build`、`pnpm check` 和 `pnpm test`。
 2. 使用 `pnpm pack` 打包各子包，在干净目录安装并验证 CLI、导入和示例构建。
-3. 检查各包版本及 peer dependency。当前版本已是 0.1.0；首次发布前不要运行会增加版本号的 `pnpm version-packages`。
+3. 检查各包版本及 peer dependency。确认当前版本和插件的 core peer dependency 兼容。
 4. 确认源码、工作区和远程仓库后，按依赖顺序发布包，并验证从 npm 安装。
 5. 将示例产物发布到 GitHub 的 `skills-release` 分支，用 `npx skills add`、`check` 和 `update` 验证兼容性。
 
@@ -251,3 +251,18 @@ pnpm release            # 发布 packages/*
 ## 子包文档
 
 各包 README：[core](packages/core/README.md) · [plugin-preflight](packages/plugin-preflight/README.md) · [plugin-env-probe](packages/plugin-env-probe/README.md) · [test-utils](packages/test-utils/README.md)
+
+### 批量织入公共说明
+
+`commonNotice` 支持有序数组，例如：
+
+```ts
+commonNotice: [
+  { file: 'common/environment.md', headingShift: 1 },
+  { file: 'common/shell.md', headingShift: 1 },
+  '适用于 {{name}}。',
+],
+variables: { BASE: 'https://example.com' },
+```
+
+`headingShift` 是 0 到 5 的整数，作用于该文件中的所有 Markdown 标题。调整后超过六级时构建失败，默认不调整。相对路径以配置文件目录为准。正文、链接、图片及引用链接的目标支持 `{{BASE}}` 等变量插值。设置 `metadata.loom.commonNotice: false` 时跳过全部公共说明。

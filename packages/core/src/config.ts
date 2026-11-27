@@ -5,6 +5,12 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { LoomConfig, LoadedConfig } from './types';
 const content = z.union([z.string(), z.object({ file: z.string() }).strict()]);
+const noticeItem = z.union([
+  z.string(),
+  z
+    .object({ file: z.string().min(1), headingShift: z.number().int().min(0).max(5).optional() })
+    .strict(),
+]);
 const scope = z.array(z.string()).optional();
 const schema = z
   .object({
@@ -17,7 +23,7 @@ const schema = z
       )
       .min(1),
     output: z.string().min(1).default('dist'),
-    commonNotice: content.optional(),
+    commonNotice: z.union([noticeItem, z.array(noticeItem)]).optional(),
     variables: z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string()).optional(),
     injections: z
       .object({

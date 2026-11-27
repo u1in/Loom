@@ -1,5 +1,11 @@
 # @u1in/loom-core
 
+## 0.2.0
+
+### Minor Changes
+
+- 支持按顺序批量织入公共说明、调整标题层级以及插值链接目标。
+
 ## 0.1.0
 
 ### Minor Changes

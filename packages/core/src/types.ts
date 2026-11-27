@@ -1,10 +1,11 @@
 import type { Root } from 'mdast';
 export type Content = string | { file: string };
+export type CommonNoticeItem = string | { file: string; headingShift?: number };
 export interface LoomConfig {
   version: 1;
   skills: { name: string; source: string }[];
   output?: string;
-  commonNotice?: Content;
+  commonNotice?: CommonNoticeItem | CommonNoticeItem[];
   variables?: Record<string, string>;
   injections?: {
     text?: { id: string; position: 'top' | 'bottom'; skills?: string[]; content: Content }[];

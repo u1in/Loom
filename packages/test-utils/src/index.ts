@@ -20,11 +20,11 @@ export const createTestBuildContext = (overrides: Partial<BuildContext> = {}): B
     platform: process.platform,
     arch: process.arch,
     cwd: process.cwd(),
-    loomVersion: '0.1.0',
+    loomVersion: '0.2.0',
   },
   variables: {},
   logger: { info: () => {}, warn: () => {} },
-  loomVersion: '0.1.0',
+  loomVersion: '0.2.0',
   ...overrides,
 });
 export const createTestSkillContext = (overrides: Partial<SkillContext> = {}): SkillContext => ({

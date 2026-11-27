@@ -62,6 +62,29 @@ describe('build', () => {
     await writeFile(path.join(root, 'dist/skills/demo/asset.txt'), 'bad');
     await expect(build(config, { check: true })).rejects.toThrow('out of date');
   });
+  it('weaves multiple notices in order, adjusts headings and interpolates link targets', async () => {
+    const { root, config, output } = await fixture();
+    await writeFile(
+      path.join(root, 'notice.md'),
+      '# First\n\n## Nested\n\n[link]({{BASE}}/{{name}})\n\n![image]({{BASE}}/image.png)\n\n[ref][target]\n\n[target]: {{BASE}}/reference\n',
+    );
+    await writeFile(path.join(root, 'second.md'), '# Second\n');
+    config.variables = { ...config.variables, BASE: 'https://example.com' };
+    config.commonNotice = [{ file: 'notice.md', headingShift: 1 }, { file: 'second.md' }, 'Last'];
+    await build(config);
+    const md = await readFile(output, 'utf8');
+    expect(md).toContain('## First');
+    expect(md).toContain('### Nested');
+    expect(md).toContain('[link](https://example.com/demo)');
+    expect(md).toContain('https://example.com/image.png');
+    expect(md).toContain('https://example.com/reference');
+    expect(md.indexOf('## First')).toBeLessThan(md.indexOf('# Second'));
+    expect(md.indexOf('# Second')).toBeLessThan(md.indexOf('Last'));
+    expect(md.indexOf('Last')).toBeLessThan(md.indexOf('Top 1'));
+    await build(config, { checkDeterminism: true });
+    await writeFile(path.join(root, 'notice.md'), '###### Too deep\n');
+    await expect(build(config)).rejects.toThrow('exceeds level 6');
+  });
   it('runs plugin hooks and transform phases in order', async () => {
     const { config, output } = await fixture();
     const calls: string[] = [];

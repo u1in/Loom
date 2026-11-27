@@ -71,7 +71,7 @@ loom --help
 | `version` | ✓ | 字面量 `1` |
 | `skills` | ✓ | `{ name, source }[]`，非空，`name` 唯一，格式 `^[a-z0-9][a-z0-9-]*$` |
 | `output` | | 输出目录，默认 `dist` |
-| `commonNotice` | | 字符串或 `{ file }`，两种形态互斥 |
+| `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义变量，键不可为 `name` / `skill` / `version` |
 | `injections.text` | | `{ id, position, skills?, content }[]`，`id` 唯一 |
 | `injections.metadata` | | `{ skills?, path, value }[]`，`value` 必须可 JSON 序列化 |
@@ -220,3 +220,18 @@ const plugin: LoomPlugin = {
 - [`@u1in/loom-plugin-preflight`](../plugin-preflight/README.md)：注入“使用前检查”章节与结构化 metadata
 - [`@u1in/loom-plugin-env-probe`](../plugin-env-probe/README.md)：探测构建环境
 - [`@u1in/loom-test-utils`](../test-utils/README.md)：插件测试辅助
+
+### 批量织入公共说明
+
+`commonNotice` 支持有序数组，例如：
+
+```ts
+commonNotice: [
+  { file: 'common/environment.md', headingShift: 1 },
+  { file: 'common/shell.md', headingShift: 1 },
+  '适用于 {{name}}。',
+],
+variables: { BASE: 'https://example.com' },
+```
+
+`headingShift` 是 0 到 5 的整数，作用于该文件中的所有 Markdown 标题。调整后超过六级时构建失败，默认不调整。相对路径以配置文件目录为准。正文、链接、图片及引用链接的目标支持 `{{BASE}}` 等变量插值。设置 `metadata.loom.commonNotice: false` 时跳过全部公共说明。
