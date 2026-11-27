@@ -56,11 +56,15 @@ export default defineConfig({
 | 官方插件 | 末尾追加 `## 使用前检查`，metadata 写入 `metadata.loom.preflight` |
 | 无注释标记 | 产物中不存在 `<!-- loom:... -->`；作者自写注释会保留 |
 
+这个示例用显式 `skills` 列出两个源码目录。pnpm 子包可以用 `skillsPath` 自动发现入口，并用 `exclude` 过滤开发文件。见 [Loom 工作区配置示例](../../README.md#源码目录和入口)。
+
 ## 预期产物
 
 ```text
 skills/pr-review/SKILL.md
+skills/pr-review/INSTALL.md
 skills/release-notes/SKILL.md
+skills/release-notes/INSTALL.md
 ```
 
 `pr-review` 的产物结构：

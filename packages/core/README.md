@@ -82,7 +82,7 @@ loom --help
 
 省略 `skills` 和 `skillsPath` 时，`loadConfig` 读取约定目录中的入口，并以子目录名作为 Skill 名。使用 `skillsPath: 'packages/*/SKILL.source.md'` 等 glob 时，从匹配文件的 frontmatter 读取 `name`，以文件所在目录作为源码目录。找不到匹配入口时会报错。显式列出 `skills` 时，`entry` 默认读取 `SKILL.md`。`injections`、`replacements` 和 `installDoc` 引用的 Skill 名必须出现在最终列表中。
 
-`exclude` 可以排除子包的 `package.json` 和 `**/node_modules/**` 等开发文件。规则作用于要复制的资源，Loom 仍会构建入口文件。
+`exclude` 的 glob 相对于每个 Skill 源码目录。命中的资源会从产物和源码哈希中排除，适合过滤子包的 `package.json` 和 `**/node_modules/**`。Loom 仍会读取入口文件并生成 `SKILL.md`，插件可通过 `onEmitFiles` 生成文件。
 
 `replacements.flags` 可设置为 `g`、`i`、`gi` 或 `ig`；设置后 `search` 按正则表达式解释。未设置时按普通字符串替换。
 
@@ -104,23 +104,24 @@ Loom 默认在每个 Skill 的 `INSTALL.md` 中生成一句面向当前 harness 
 每个 Skill 的处理顺序是固定的：
 
 ```text
-loadConfig（jiti 加载，失败时带上文件路径与原始错误）
+loadConfig（加载配置、发现入口并验证 Skill 列表）
   → validatePlugins
-  → 注册内置 injections / install-doc → 逐个 await plugin.apply(api)
+  → 注册内置 injections → 逐个 await plugin.apply(api)
   → onBuildStart
   → for each skill:
-      onSkillStart
-      读取 SKILL.md（\r\n / \r 规范化为 \n）→ 解析 AST + frontmatter
+      读取入口文件（\r\n / \r 规范化为 \n）→ 解析 AST + frontmatter
       校验 name 与 metadata.version
+      onSkillStart
       injectCommonNotice（metadata.loom.commonNotice === false 时跳过）
       [transforms，before-replace，按注册顺序]
       applyReplacements（含变量插值）
       [transforms，after-replace]
       [metadata transforms] → 每次执行后校验保留字段
       YAML 回写（lineWidth: 0，sortMapEntries: false）→ 序列化 Markdown
-      复制资源文件（文本执行替换，二进制只复制，保留权限位）
+      复制资源文件（应用 exclude，文本执行替换，二进制直接复制，保留权限位）
+      生成 INSTALL.md（默认启用）
       onEmitFiles
-      Markdown 相对链接校验
+      Markdown 链接补全与相对链接校验
       --check 比较哈希 / 否则写入 .<name>.tmp 后整体替换
       onSkillEnd
   → onBuildEnd
@@ -151,7 +152,7 @@ loadConfig（jiti 加载，失败时带上文件路径与原始错误）
 ```ts
 import { build, hashFiles, loadConfig, defineConfig, validatePlugins } from '@u1in/loom-core';
 
-const config = await loadConfig();          // 返回已填充默认值的 LoadedConfig
+const config = await loadConfig();          // 返回已解析 Skill 列表的 LoadedConfig
 await build(config, { skill: 'pr-review' });
 
 const hashes = await hashFiles('dist');     // { 相对路径: sha256 }

@@ -2,7 +2,7 @@
 
 **用 TypeScript 配置、按线性 AST 管线预编译 Skill 的构建框架。**
 
-开发者只写 Skill 的功能源码，Loom 在构建期把 `SKILL.md` 解析成 Markdown AST，依次执行版本注入、公共说明注入、插件变换、字符串替换，再重组为自包含、可单独安装、可被 `npx skills` 原生发现的产物。
+开发者只写 Skill 的功能源码，Loom 在构建期把 Skill 的入口文件解析成 Markdown AST，依次执行版本注入、公共说明注入、插件变换、字符串替换，再重组为自包含、可单独安装、可被 `npx skills` 原生发现的产物。
 
 ```bash
 pnpm add -D @u1in/loom-core
@@ -102,7 +102,8 @@ npx loom build
 
 ```text
 skills/pr-review/
-├── SKILL.md            # 已注入版本、公共说明、插件内容并完成替换
+├── SKILL.md            # 含公共说明、插件内容和替换结果
+├── INSTALL.md          # 安装指引
 └── references/
     └── checklist.md    # 文本资源同样应用替换
 ```
@@ -267,14 +268,36 @@ variables: { BASE: 'https://example.com' },
 
 省略 `skills` 和 `skillsPath` 时，Loom 在配置目录下查找 `src/skills/*/SKILL.source.md`，以一级子目录名作为 Skill 名，默认输出到 `skills/<name>/SKILL.md`。没有符合约定的入口时，构建会报错。
 
-要从工作区子包发现 Skill，可配置入口文件的 glob：
+pnpm 工作区可以把每个 Skill 放在独立子包中：
 
-```ts
-skillsPath: 'packages/*/SKILL.source.md',
-exclude: ['package.json', '**/node_modules/**'],
+```text
+my-skills/
+├── loom.config.ts
+├── pnpm-workspace.yaml
+├── partials/
+│   └── notice.md
+└── packages/
+    └── pr-review/
+        ├── package.json
+        ├── SKILL.source.md
+        └── references/checklist.md
 ```
 
-`exclude` 用于排除子包的开发文件，入口文件仍会构建为 `SKILL.md`。Loom 读取匹配文件的 frontmatter `name` 作为 Skill 名，以入口所在目录为源码目录。glob 无匹配项或匹配项没有有效名称时会报错。
+在 `pnpm-workspace.yaml` 中注册 `packages/*`，在工作区根目录执行 `pnpm add -Dw @u1in/loom-core`。然后配置入口 glob 和资源排除规则：
+
+```ts
+import { defineConfig } from '@u1in/loom-core';
+
+export default defineConfig({
+  skillsPath: 'packages/*/SKILL.source.md',
+  exclude: ['package.json', '**/node_modules/**'],
+  commonNotice: { file: 'partials/notice.md' },
+});
+```
+
+`skillsPath` 相对于配置目录匹配入口文件。Loom 从匹配文件的 frontmatter 读取 `name`，以文件所在目录作为源码目录。找不到入口、名称无效或名称重复时，构建会报错。
+
+`exclude` 相对于每个 Skill 的源码目录匹配资源，排除子包的开发文件和依赖目录。Loom 仍会生成 `SKILL.md` 和默认的 `INSTALL.md`。可用 `loom build --skill pr-review` 单独构建一个子包。
 
 需要逐项指定源码时，可显式配置 `skills`：
 
