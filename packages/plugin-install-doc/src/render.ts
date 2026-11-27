@@ -1,5 +1,3 @@
-export const DEFAULT_INSTALL_DOC = 'INSTALL.md';
-
 export const deriveSource = (baseUrl?: string): string | undefined => {
   if (!baseUrl || !URL.canParse(baseUrl)) return undefined;
   const url = new URL(baseUrl);

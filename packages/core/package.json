@@ -1,6 +1,6 @@
 {
   "name": "@u1in/loom-core",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "exports": {
     ".": {
@@ -29,6 +29,7 @@
     "loom": "./dist/cli.js"
   },
   "dependencies": {
+    "@u1in/loom-plugin-install-doc": "workspace:^",
     "cac": "^6.7.14",
     "fast-glob": "^3.3.3",
     "jiti": "^2.4.2",

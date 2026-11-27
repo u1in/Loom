@@ -71,7 +71,6 @@ Inspect the changes in {{PROJECT_NAME}} and report actionable findings.
 ```ts
 // loom.config.ts
 import { defineConfig } from '@u1in/loom-core';
-import preflight from '@u1in/loom-plugin-preflight';
 
 export default defineConfig({
   commonNotice: { file: 'partials/notice.md' },
@@ -80,7 +79,6 @@ export default defineConfig({
     text: [{ id: 'footer', position: 'bottom', content: 'Built for {{PROJECT_NAME}}.' }],
     metadata: [{ path: 'category', value: 'review' }],
   },
-  plugins: [preflight({ tools: [{ name: 'git', version: '>=2.30', required: true }] })],
   replacements: [{ search: 'EXAMPLE_PROJECT', replace: 'MyProject' }],
 });
 ```
@@ -133,7 +131,7 @@ skills/pr-review/
 | `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义插值变量，不可与 `name` / `skill` / `version` 重名 |
-| `installDoc` | | 默认 `true`，为每个 Skill 生成安装文档；`false` 关闭，也可传配置对象 |
+| `installDoc` | | 默认 `true`，自动注册官方安装文档插件；`false` 关闭自动注册，也可传配置对象 |
 | `injections.text` | | 文本注入，`position` 为 `top` 或 `bottom`，参与插值与替换 |
 | `injections.metadata` | | 写入 `metadata.loom.injections.<path>`，支持点号路径 |
 | `plugins` | | `LoomPlugin` 实例数组 |
@@ -143,12 +141,9 @@ skills/pr-review/
 
 ## 插件
 
-| 包 | 作用 |
-|---|---|
-| `@u1in/loom-core` | 构建管线、PluginAPI、CLI、`defineConfig`，内置 `injections` 与 `installDoc` |
-| `@u1in/loom-plugin-preflight` | 注入“使用前检查”章节与 `metadata.loom.preflight`，可选发射检查脚本 |
-| `@u1in/loom-plugin-env-probe` | 探测构建环境，支持 `print` / `metadata` / `file` 三种模式 |
-| `@u1in/loom-test-utils` | 插件作者用的测试上下文与注册收集器 |
+官方安装文档插件在 [@u1in/loom-plugin-install-doc](packages/plugin-install-doc/README.md) 中提供。项目可以通过 `plugins` 注册自己的 `LoomPlugin`，示例见 [demo-repo](examples/demo-repo/README.md#配置演示了什么)。
+
+原用于测试的 `@u1in/loom-plugin-env-probe`、`@u1in/loom-plugin-preflight` 和 `@u1in/loom-test-utils` 已从当前工作区移除，历史源码见 `v0.4.0` 标签。
 
 插件以实例形式传入配置，核心不做模块名解析——用 `import` 和工厂函数自己完成这一步。插件运行在本机进程中，**必须信任其代码**，MVP 不提供沙箱。
 
@@ -172,7 +167,7 @@ const hello: LoomPlugin = {
 
 Loom 的核心承诺是：**核心管线与内置插件的产物逐字节可复现**。为此构建期不写时间戳、不写随机值、不保留 mtime，所有文件遍历按路径排序，换行统一为 `\n`，`remark-stringify` 与 `yaml.stringify` 使用固定选项。
 
-`loom build --check-determinism` 会连续构建两次并比较文件哈希，适合放进 CI。破坏确定性的典型来源是配置里的随机值/时间戳，以及 `env-probe` 的 `metadata`、`file` 模式——这类插件必须在自己的 README 中声明风险。
+`loom build --check-determinism` 会连续构建两次并比较文件哈希，适合放进 CI。破坏确定性的典型来源是配置里的随机值/时间戳，以及读取构建环境的插件。
 
 ## 发布 Skill
 
@@ -199,10 +194,8 @@ npx skills add https://github.com/OWNER/REPO/tree/skills-release/skills/pr-revie
 ```text
 .
 ├── packages/
-│   ├── core/                 # @u1in/loom-core：配置、管线、PluginAPI、CLI
-│   ├── plugin-preflight/     # @u1in/loom-plugin-preflight
-│   ├── plugin-env-probe/     # @u1in/loom-plugin-env-probe
-│   └── test-utils/           # @u1in/loom-test-utils
+│   ├── core/                 # 配置、构建管线、PluginAPI 和 CLI
+│   └── plugin-install-doc/   # 官方安装文档插件
 ├── examples/demo-repo/       # 端到端示例，也是样例验收基准
 └── .changeset/               # 多包版本与 changelog 管理
 ```
@@ -228,26 +221,25 @@ pnpm --filter demo-repo test                  # 连跑两次比较确定性
 ```bash
 pnpm changeset          # 记录变更与变更级别
 pnpm version-packages   # 更新版本号、替换 workspace:*、生成 CHANGELOG
-pnpm release            # 发布 packages/*
+pnpm release            # 按依赖顺序发布官方插件和 Core
 ```
 
 示例项目 `demo-repo` 在 changesets 的 `ignore` 列表中，不参与发布。
 
 ## 发布前检查
 
-四个公开包使用 `@u1in/loom-*` 命名空间。发布前确认 npm 账号权限、GitHub 仓库和 MIT 许可证配置：
+发布前确认 npm 账号权限、GitHub 仓库和 MIT 许可证配置：
 
 1. 在 Node.js 20 或更高版本下运行 `pnpm install --frozen-lockfile`、`pnpm build`、`pnpm check` 和 `pnpm test`。
-2. 使用 `pnpm pack` 打包各子包，在干净目录安装并验证 CLI、导入和示例构建。
-3. 检查各包版本及 peer dependency。确认当前版本和插件的 core peer dependency 兼容。
-4. 确认源码、工作区和远程仓库后，按依赖顺序发布包，并验证从 npm 安装。
-5. 将示例产物发布到 GitHub 的 `skills-release` 分支，用 `npx skills add`、`check` 和 `update` 验证兼容性。
+2. 分别打包 `@u1in/loom-plugin-install-doc` 与 `@u1in/loom-core`，在干净目录验证两个包和示例构建。
+3. 先发布 `@u1in/loom-plugin-install-doc`，再发布 `@u1in/loom-core`，最后验证从 npm 安装。
+4. 将示例产物发布到 GitHub 的 `skills-release` 分支，用 `npx skills add`、`check` 和 `update` 验证兼容性。
 
 `--check-determinism` 只比较同一机器上连续两次构建；读取环境的插件可能在其他环境生成不同产物。
 
 ## 子包文档
 
-各包 README：[core](packages/core/README.md) · [plugin-preflight](packages/plugin-preflight/README.md) · [plugin-env-probe](packages/plugin-env-probe/README.md) · [test-utils](packages/test-utils/README.md)
+[Core 配置与 PluginAPI](packages/core/README.md) · [自定义插件示例](examples/demo-repo/README.md)
 
 ### 批量织入公共说明
 
@@ -321,7 +313,22 @@ baseUrl: 'https://example.com/skills/{{name}}/',
 
 ### 安装文档
 
-Loom 默认在每个 Skill 的 `INSTALL.md` 中生成一句面向当前 harness 的中文安装指引。设置 `installDoc: false` 可关闭生成。
+Loom 默认启用官方安装文档插件，为每个 Skill 生成一句面向当前 harness 的中文安装指引。设置 `installDoc: true` 可以显式启用自动注册。也可以安装官方插件后，把实例放入 `plugins`：
+
+```bash
+pnpm add -D @u1in/loom-plugin-install-doc
+```
+
+```ts
+import { defineConfig } from '@u1in/loom-core';
+import { installDoc } from '@u1in/loom-plugin-install-doc';
+
+export default defineConfig({
+  plugins: [installDoc()],
+});
+```
+
+`installDoc()` 的选项和 `installDoc: { ... }` 使用同一套配置。显式插件优先于自动注册。只设置 `installDoc: false` 可关闭自动生成。
 
 生成的 Markdown 形如：
 

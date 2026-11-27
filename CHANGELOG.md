@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- 发布独立的官方安装文档插件 @u1in/loom-plugin-install-doc 0.1.0。Core 自动注册或显式注册均使用该包。
+- 退役三个测试用子包。端到端示例改用本地自定义插件。
+
 ## 0.4.0
 
 - 支持按目录约定或 skillsPath glob 发现 Skill，也可显式列出源码入口。

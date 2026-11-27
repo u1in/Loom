@@ -47,15 +47,18 @@ importers:
       '@u1in/loom-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@u1in/loom-plugin-preflight':
+      '@u1in/loom-plugin-install-doc':
         specifier: workspace:*
-        version: link:../../packages/plugin-preflight
+        version: link:../../packages/plugin-install-doc
 
   packages/core:
     dependencies:
       '@types/mdast':
         specifier: ^4.0.4
         version: 4.0.4
+      '@u1in/loom-plugin-install-doc':
+        specifier: workspace:^
+        version: link:../plugin-install-doc
       cac:
         specifier: ^6.7.14
         version: 6.7.14
@@ -94,40 +97,11 @@ importers:
         specifier: ^4.0.0
         version: 4.0.3
 
-  packages/plugin-env-probe:
+  packages/plugin-install-doc:
     dependencies:
       zod:
         specifier: ^3.24.0
         version: 3.24.0
-    devDependencies:
-      '@u1in/loom-core':
-        specifier: workspace:*
-        version: link:../core
-
-  packages/plugin-preflight:
-    dependencies:
-      remark-parse:
-        specifier: ^11.0.0
-        version: 11.0.0
-      unified:
-        specifier: ^11.0.5
-        version: 11.0.5
-      zod:
-        specifier: ^3.24.0
-        version: 3.24.0
-    devDependencies:
-      '@u1in/loom-core':
-        specifier: workspace:*
-        version: link:../core
-
-  packages/test-utils:
-    devDependencies:
-      '@types/mdast':
-        specifier: ^4.0.4
-        version: 4.0.4
-      '@u1in/loom-core':
-        specifier: workspace:*
-        version: link:../core
 
 packages:
 

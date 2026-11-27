@@ -6,12 +6,6 @@ metadata:
   loom:
     injections:
       category: demo
-    preflight:
-      tools:
-        - name: git
-          version: ">=2.30"
-          required: true
-      env: []
 ---
 
 # PR Review
@@ -24,4 +18,4 @@ Built for Loom Demo.
 
 ## 使用前检查
 
-- 工具: git >=2.30（必需）
+请确认已安装 Git 2.30 或更新版本。

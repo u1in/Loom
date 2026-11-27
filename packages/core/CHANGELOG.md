@@ -1,5 +1,11 @@
 # @u1in/loom-core
 
+## 0.5.0
+
+### Minor Changes
+
+- 将安装文档抽为独立的 `@u1in/loom-plugin-install-doc` 官方插件，支持通过 `installDoc` 配置或在 `plugins` 中显式注册。示例改用自定义插件，移除三个测试用子包。
+
 ## 0.4.0
 
 ### Minor Changes

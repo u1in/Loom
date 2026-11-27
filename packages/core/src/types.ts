@@ -1,13 +1,8 @@
 import type { Root } from 'mdast';
+import type { InstallDocOptions } from '@u1in/loom-plugin-install-doc';
+export type { InstallDocOptions } from '@u1in/loom-plugin-install-doc';
 export type Content = string | { file: string };
 export type CommonNoticeItem = string | { file: string; headingShift?: number };
-export interface InstallDocOptions {
-  file?: string;
-  source?: string;
-  template?: string;
-  text?: string;
-  skills?: string[];
-}
 export interface LoomConfig {
   skills?: { name: string; source: string; entry?: string }[];
   skillsPath?: string;
@@ -73,6 +68,10 @@ export interface SkillContext {
 export interface EmitContext {
   skillName: string;
   version: string;
+  readonly metadata: Readonly<Record<string, unknown>>;
+  readonly baseUrl?: string;
+  interpolate(text: string): string;
+  hasOutputFile(path: string): boolean;
   emit(path: string, content: string | Buffer): void;
   readSource(path: string): Promise<string>;
   readonly build: BuildContext;
