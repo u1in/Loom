@@ -1,7 +1,8 @@
 {
-  "name": "@u1in/loom-plugin-env-probe",
-  "version": "0.4.0",
+  "name": "@u1in/loom-plugin-install-doc",
+  "version": "0.1.0",
   "type": "module",
+  "description": "Official Loom plugin for generating Skill installation guides.",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -17,12 +18,6 @@
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"
   },
-  "peerDependencies": {
-    "@u1in/loom-core": "^0.4.0"
-  },
-  "devDependencies": {
-    "@u1in/loom-core": "workspace:*"
-  },
   "dependencies": {
     "zod": "^3.24.0"
   },
@@ -33,10 +28,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/u1in/Loom.git",
-    "directory": "packages/plugin-env-probe"
+    "directory": "packages/plugin-install-doc"
   },
   "bugs": {
     "url": "https://github.com/u1in/Loom/issues"
   },
-  "homepage": "https://github.com/u1in/Loom#readme"
+  "homepage": "https://github.com/u1in/Loom/tree/main/packages/plugin-install-doc"
 }

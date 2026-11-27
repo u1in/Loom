@@ -8,6 +8,7 @@ export type {
   SkillContext,
   EmitContext,
   BuildEnv,
+  InstallDocOptions,
 } from './types';
 import type { LoomPlugin } from './types';
 export const validatePlugins = (plugins: LoomPlugin[]): LoomPlugin[] => {

@@ -29,7 +29,7 @@ import type {
   TransformContext,
 } from './types';
 import { validatePlugins } from './plugin';
-import { DEFAULT_INSTALL_DOC, deriveSource, renderInstallDoc } from './install-doc';
+import { INSTALL_DOC_PLUGIN_NAME, installDoc } from '@u1in/loom-plugin-install-doc';
 import { parseSkillDocument, processor } from './markdown';
 
 const normalize = (s: string) => s.replace(/\r\n?/g, '\n');
@@ -118,11 +118,11 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
       platform: process.platform,
       arch: process.arch,
       cwd: config.rootDir,
-      loomVersion: '0.4.0',
+      loomVersion: '0.5.0',
     },
     variables: config.variables ?? {},
     logger,
-    loomVersion: '0.4.0',
+    loomVersion: '0.5.0',
   };
   const before: Entry<Transform>[] = [],
     after: Entry<Transform>[] = [],
@@ -189,9 +189,14 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
         });
     },
   };
-  const installDoc = config.installDoc ?? true;
-  const installOptions = installDoc === true ? {} : installDoc;
-  for (const plugin of [builtin, ...plugins])
+  const builtinPlugins = [builtin];
+  const installOptions = config.installDoc ?? true;
+  if (
+    installOptions !== false &&
+    !plugins.some((plugin) => plugin.name === INSTALL_DOC_PLUGIN_NAME)
+  )
+    builtinPlugins.push(installDoc(installOptions === true ? undefined : installOptions));
+  for (const plugin of [...builtinPlugins, ...plugins])
     try {
       await plugin.apply(apiFor(plugin.name));
     } catch (e) {
@@ -378,36 +383,15 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
       files.set(file, { data, mode: (await stat(path.join(source, file))).mode });
     }
     const baseUrl = config.baseUrl && interpolate(config.baseUrl);
-    if (installOptions && applies(installOptions.skills, skill.name)) {
-      const file = safePath(installOptions.file ?? DEFAULT_INSTALL_DOC);
-      if (file === entry || files.has(file)) {
-        logger.warn(skill.name + ': ' + file + ' exists in source or output, install doc skipped');
-      } else {
-        const template = installOptions.template
-          ? await readFile(path.resolve(config.rootDir, installOptions.template), 'utf8')
-          : installOptions.text;
-        const installSource = installOptions.source
-          ? interpolate(installOptions.source)
-          : deriveSource(baseUrl);
-        if (!installSource && baseUrl)
-          logger.warn(
-            skill.name + ': install source is unknown, set installDoc.source to provide it',
-          );
-        const document = renderInstallDoc({
-          name: skill.name,
-          version,
-          description: typeof fm.description === 'string' ? fm.description : undefined,
-          source: installSource,
-          template,
-          variables: config.variables,
-          warn: logger.warn,
-        });
-        files.set(file, { data: Buffer.from(document) });
-      }
-    }
     const emitCtx: EmitContext = {
       skillName: skill.name,
       version,
+      baseUrl,
+      interpolate,
+      get metadata() {
+        return fm;
+      },
+      hasOutputFile: (p) => files.has(safePath(p)),
       readSource,
       build: ctx,
       emit: (p, data) => {

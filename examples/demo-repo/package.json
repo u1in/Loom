@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "@u1in/loom-core": "workspace:*",
-    "@u1in/loom-plugin-preflight": "workspace:*"
+    "@u1in/loom-plugin-install-doc": "workspace:*"
   }
 }

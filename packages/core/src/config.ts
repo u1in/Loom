@@ -6,6 +6,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { LoomConfig, LoadedConfig } from './types';
 import { parseSkillDocument } from './markdown';
+import { installDocOptionsSchema } from '@u1in/loom-plugin-install-doc';
 const skillName = z.string().regex(/^[a-z0-9][a-z0-9-]*$/);
 const skillFrontmatter = z.object({ name: skillName });
 const content = z.union([z.string(), z.object({ file: z.string() }).strict()]);
@@ -16,22 +17,6 @@ const noticeItem = z.union([
     .strict(),
 ]);
 const scope = z.array(z.string()).optional();
-const installDoc = z.union([
-  z.boolean(),
-  z
-    .object({
-      file: z
-        .string()
-        .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*\.md$/)
-        .optional(),
-      source: z.string().min(1).optional(),
-      template: z.string().min(1).optional(),
-      text: z.string().min(1).optional(),
-      skills: scope,
-    })
-    .strict()
-    .refine((v) => !(v.template && v.text), 'template and text are mutually exclusive'),
-]);
 const schema = z
   .object({
     skills: z
@@ -63,7 +48,7 @@ const schema = z
       .optional(),
     commonNotice: z.union([noticeItem, z.array(noticeItem)]).optional(),
     variables: z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string()).optional(),
-    installDoc: installDoc.optional(),
+    installDoc: z.union([z.boolean(), installDocOptionsSchema]).optional(),
     injections: z
       .object({
         text: z

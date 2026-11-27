@@ -1,6 +1,6 @@
 # @u1in/loom-core
 
-Loom 的核心包：配置加载与校验、Markdown AST 构建管线、PluginAPI、CLI，以及内置的 `injections` 插件。
+Loom 的核心包：配置加载与校验、Markdown AST 构建管线、PluginAPI、CLI，以及内置注入和对官方安装文档插件的自动注册。
 
 ```bash
 pnpm add -D @u1in/loom-core
@@ -72,7 +72,7 @@ loom --help
 | `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义变量，键不可为 `name` / `skill` / `version` |
-| `installDoc` | | 默认 `true`；`false` 关闭生成，也可传配置对象 |
+| `installDoc` | | 默认 `true`，自动注册安装文档插件；`false` 关闭自动注册，也可传配置对象 |
 | `injections.text` | | `{ id, position, skills?, content }[]`，`id` 唯一 |
 | `injections.metadata` | | `{ skills?, path, value }[]`，`value` 必须可 JSON 序列化 |
 | `plugins` | | `LoomPlugin` 实例数组 |
@@ -90,7 +90,18 @@ loom --help
 
 ## 安装文档
 
-Loom 默认在每个 Skill 的 `INSTALL.md` 中生成一句面向当前 harness 的中文安装指引。
+Loom 默认启用官方安装文档插件，为每个 Skill 生成一句面向当前 harness 的中文安装指引。`installDoc: true` 显式启用，`installDoc: false` 关闭自动注册。也可以安装并从 [@u1in/loom-plugin-install-doc](../plugin-install-doc/README.md) 导入 `installDoc()`：
+
+```ts
+import { defineConfig } from '@u1in/loom-core';
+import { installDoc } from '@u1in/loom-plugin-install-doc';
+
+export default defineConfig({
+  plugins: [installDoc({ file: 'SETUP.md' })],
+});
+```
+
+显式插件优先于自动注册。插件工厂和顶层配置对象共用以下选项：
 
 - Loom 从 GitLab 或 GitHub 的 raw 发布地址推导安装链接，保留分支或标签以及 Skill 目录。`source` 可覆盖推导结果，支持 `{{name}}` 等变量。缺少安装来源时，文案提示从当前目录安装。配置了无法推导的 `baseUrl` 时，构建会告警。
 - `file` 改输出文件名，必须是 Skill 根目录下的 `.md` 文件名。
@@ -106,7 +117,7 @@ Loom 默认在每个 Skill 的 `INSTALL.md` 中生成一句面向当前 harness 
 ```text
 loadConfig（加载配置、发现入口并验证 Skill 列表）
   → validatePlugins
-  → 注册内置 injections → 逐个 await plugin.apply(api)
+  → 注册内置 injections 和默认安装文档插件 → 逐个 await plugin.apply(api)
   → onBuildStart
   → for each skill:
       读取入口文件（\r\n / \r 规范化为 \n）→ 解析 AST + frontmatter
@@ -119,8 +130,7 @@ loadConfig（加载配置、发现入口并验证 Skill 列表）
       [metadata transforms] → 每次执行后校验保留字段
       YAML 回写（lineWidth: 0，sortMapEntries: false）→ 序列化 Markdown
       复制资源文件（应用 exclude，文本执行替换，二进制直接复制，保留权限位）
-      生成 INSTALL.md（默认启用）
-      onEmitFiles
+      onEmitFiles（默认安装文档插件在此发射 INSTALL.md）
       Markdown 链接补全与相对链接校验
       --check 比较哈希 / 否则写入 .<name>.tmp 后整体替换
       onSkillEnd
@@ -199,13 +209,13 @@ const plugin: LoomPlugin = {
 - 变换应为纯函数，除 `ctx.env` 的环境快照外不读取其他外部状态。
 - 第三方插件无沙箱，运行在本机进程内。
 
-`TransformContext` 提供 `skillName`、`version`、`variables`、`config`、`logger` 和 `interpolate(text)`；`SkillContext` 的 `tree` / `metadata` 是实时 getter，指向当前构建状态。`EmitContext` 同样以 getter 暴露 `metadata`（已完成 metadata transform 的 frontmatter），可据此读取 `description` 等字段。
+`TransformContext` 提供 `skillName`、`version`、`variables`、`config`、`logger` 和 `interpolate(text)`；`SkillContext` 的 `tree` / `metadata` 是实时 getter，指向当前构建状态。`EmitContext` 提供完成 metadata transform 后的 `metadata`、插值后的 `baseUrl`、`interpolate(text)` 和 `hasOutputFile(path)`。
 
 ### 插件类型与分发
 
 `@u1in/loom-core` 和 `@u1in/loom-core/plugin` 导出 `LoomPlugin`、`PluginAPI`、`Transform`、`MetadataTransform`、`BuildContext`、`TransformContext`、`SkillContext`、`EmitContext` 与 `BuildEnv`。钩子可异步执行，按注册顺序串行调用。
 
-独立插件应以 core 的兼容版本范围声明 `peerDependencies`；在本 workspace 开发时，同时用 `workspace:*` 声明 core 的开发依赖。插件应说明环境依赖及其对确定性的影响，并可用 [test-utils](../test-utils/README.md) 创建测试上下文和收集注册项。
+独立插件应以 core 的兼容版本范围声明 `peerDependencies`；在本 workspace 开发时，同时用 `workspace:*` 声明 core 的开发依赖。插件应说明环境依赖及其对确定性的影响。可通过核心的 `build()` 在临时项目里测试插件，参见 [自定义插件示例](../../examples/demo-repo/README.md)。
 
 ## 错误与告警
 
@@ -228,12 +238,6 @@ const plugin: LoomPlugin = {
 相同源码、相同配置、相同 Loom 版本，产物逐字节一致。实现手段：不写时间戳与随机值、不保留 mtime、所有 glob 结果按路径排序、文本换行统一为 `\n`、`remark-stringify` 固定 `bullet: '-'` / `emphasis: '*'` / `fences: true`、`yaml.stringify` 固定 `lineWidth: 0` 与 `sortMapEntries: false`、替换与变换顺序写死、写入采用临时目录、备份和失败回滚。
 
 确定性只覆盖核心与内置能力；配置里的随机值、时间戳，以及会读取环境的插件都可能破坏它，请用 `loom build --check-determinism` 在 CI 中兜底。
-
-## 相关包
-
-- [`@u1in/loom-plugin-preflight`](../plugin-preflight/README.md)：注入“使用前检查”章节与结构化 metadata
-- [`@u1in/loom-plugin-env-probe`](../plugin-env-probe/README.md)：探测构建环境
-- [`@u1in/loom-test-utils`](../test-utils/README.md)：插件测试辅助
 
 ### 批量织入公共说明
 

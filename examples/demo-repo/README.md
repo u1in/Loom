@@ -1,6 +1,6 @@
 # demo-repo
 
-Loom 的端到端示例，同时是 workspace 成员。它用一份真实配置跑通「两个 Skill × 公共说明 × 变量插值 × 注入 × 替换 × 官方插件」的完整链路，任何改动的验收都可以先在这里跑一遍。
+Loom 的端到端示例，同时是 workspace 成员。它用一份真实配置跑通两个 Skill 的公共说明、变量插值、注入、替换、自定义插件和官方安装文档插件。
 
 ```bash
 pnpm --filter demo-repo build   # loom build
@@ -26,7 +26,24 @@ demo-repo/
 
 ```ts
 import { defineConfig } from '@u1in/loom-core';
-import preflight from '@u1in/loom-plugin-preflight';
+import { installDoc } from '@u1in/loom-plugin-install-doc';
+import type { LoomPlugin } from '@u1in/loom-core';
+
+const gitCheck: LoomPlugin = {
+  name: 'demo-git-check',
+  apply: (api) => {
+    api.addTransform((tree) => {
+      tree.children.push(
+        { type: 'heading', depth: 2, children: [{ type: 'text', value: '使用前检查' }] },
+        {
+          type: 'paragraph',
+          children: [{ type: 'text', value: '请确认已安装 Git 2.30 或更新版本。' }],
+        },
+      );
+      return tree;
+    });
+  },
+};
 
 export default defineConfig({
   skills: [
@@ -39,7 +56,7 @@ export default defineConfig({
     text: [{ id: 'footer', position: 'bottom', content: 'Built for {{PROJECT_NAME}}.' }],
     metadata: [{ path: 'category', value: 'demo' }],
   },
-  plugins: [preflight({ tools: [{ name: 'git', version: '>=2.30', required: true }] })],
+  plugins: [gitCheck, installDoc()],
   replacements: [{ search: 'EXAMPLE_PROJECT', replace: 'Loom Demo' }],
 });
 ```
@@ -53,7 +70,8 @@ export default defineConfig({
 | 文本注入 | 末尾出现 `Built for Loom Demo.`（`bottom` 位置） |
 | metadata 注入 | 两个 Skill 都有 `metadata.loom.injections.category: demo` |
 | 字符串替换 | `release-notes` 正文的 `EXAMPLE_PROJECT` 被替换 |
-| 官方插件 | 末尾追加 `## 使用前检查`，metadata 写入 `metadata.loom.preflight` |
+| 自定义插件 | `gitCheck` 注册 AST 变换，在末尾追加 `## 使用前检查` |
+| 官方安装文档插件 | 在 `plugins` 中显式注册 `installDoc()`，生成 `INSTALL.md` |
 | 无注释标记 | 产物中不存在 `<!-- loom:... -->`；作者自写注释会保留 |
 
 这个示例用显式 `skills` 列出两个源码目录。pnpm 子包可以用 `skillsPath` 自动发现入口，并用 `exclude` 过滤开发文件。见 [Loom 工作区配置示例](../../README.md#源码目录和入口)。
@@ -78,12 +96,6 @@ metadata:
   loom:
     injections:
       category: demo
-    preflight:
-      tools:
-        - name: git
-          version: ">=2.30"
-          required: true
-      env: []
 ---
 
 # PR Review
@@ -96,7 +108,7 @@ Built for Loom Demo.
 
 ## 使用前检查
 
-- 工具: git >=2.30（必需）
+请确认已安装 Git 2.30 或更新版本。
 ```
 
 顺序固定为：作者标题 → 公共说明 → 作者正文 → `bottom` 注入 → 插件追加内容。`release-notes` 只是少了第一段。
