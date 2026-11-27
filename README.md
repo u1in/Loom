@@ -128,6 +128,7 @@ skills/pr-review/
 |---|---|---|
 | `skills` | | 显式列出 `{ name, source, entry? }[]`，`name` 唯一且匹配 `^[a-z0-9][a-z0-9-]*$` |
 | `skillsPath` | | 匹配 Skill 入口文件的 glob，以配置目录为基准，与 `skills` 互斥 |
+| `exclude` | | 复制资源时排除的 glob 列表，路径相对于每个 Skill 源码目录 |
 | `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义插值变量，不可与 `name` / `skill` / `version` 重名 |
@@ -269,10 +270,11 @@ variables: { BASE: 'https://example.com' },
 要从工作区子包发现 Skill，可配置入口文件的 glob：
 
 ```ts
-skillsPath: 'packages/*/src/SKILL.source.md',
+skillsPath: 'packages/*/SKILL.source.md',
+exclude: ['package.json', '**/node_modules/**'],
 ```
 
-Loom 读取匹配文件的 frontmatter `name` 作为 Skill 名，以入口所在目录为源码目录。glob 无匹配项或匹配项没有有效名称时会报错。
+`exclude` 用于排除子包的开发文件，入口文件仍会构建为 `SKILL.md`。Loom 读取匹配文件的 frontmatter `name` 作为 Skill 名，以入口所在目录为源码目录。glob 无匹配项或匹配项没有有效名称时会报错。
 
 需要逐项指定源码时，可显式配置 `skills`：
 

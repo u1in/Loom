@@ -50,6 +50,7 @@ const schema = z
       .min(1)
       .optional(),
     skillsPath: z.string().min(1).optional(),
+    exclude: z.array(z.string().min(1)).optional(),
     output: z.string().min(1).default('.'),
     baseUrl: z
       .string()

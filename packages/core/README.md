@@ -68,6 +68,7 @@ loom --help
 |---|---|---|
 | `skills` | | 显式列出非空 `{ name, source, entry? }[]`，`name` 唯一且匹配 `^[a-z0-9][a-z0-9-]*$` |
 | `skillsPath` | | 匹配 Skill 入口文件的 glob，以配置目录为基准，与 `skills` 互斥 |
+| `exclude` | | 复制资源时排除的 glob 列表，路径相对于每个 Skill 源码目录 |
 | `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义变量，键不可为 `name` / `skill` / `version` |
@@ -79,7 +80,9 @@ loom --help
 
 校验由 zod 完成，根对象与各配置项均为 `strict`——**未知字段直接报错**，配置拼写错误不会静默通过。`defineConfig` 同时支持同步配置、`Promise` 和返回二者的函数（异步配置为实验性能力）。
 
-省略 `skills` 和 `skillsPath` 时，`loadConfig` 读取约定目录中的入口，并以子目录名作为 Skill 名。使用 `skillsPath: 'packages/*/src/SKILL.source.md'` 等 glob 时，从匹配文件的 frontmatter 读取 `name`，以文件所在目录作为源码目录。找不到匹配入口时会报错。显式列出 `skills` 时，`entry` 默认读取 `SKILL.md`。`injections`、`replacements` 和 `installDoc` 引用的 Skill 名必须出现在最终列表中。
+省略 `skills` 和 `skillsPath` 时，`loadConfig` 读取约定目录中的入口，并以子目录名作为 Skill 名。使用 `skillsPath: 'packages/*/SKILL.source.md'` 等 glob 时，从匹配文件的 frontmatter 读取 `name`，以文件所在目录作为源码目录。找不到匹配入口时会报错。显式列出 `skills` 时，`entry` 默认读取 `SKILL.md`。`injections`、`replacements` 和 `installDoc` 引用的 Skill 名必须出现在最终列表中。
+
+`exclude` 可以排除子包的 `package.json` 和 `**/node_modules/**` 等开发文件。规则作用于要复制的资源，Loom 仍会构建入口文件。
 
 `replacements.flags` 可设置为 `g`、`i`、`gi` 或 `ig`；设置后 `search` 按正则表达式解释。未设置时按普通字符串替换。
 

@@ -11,6 +11,7 @@ export interface InstallDocOptions {
 export interface LoomConfig {
   skills?: { name: string; source: string; entry?: string }[];
   skillsPath?: string;
+  exclude?: string[];
   output?: string;
   baseUrl?: string;
   commonNotice?: CommonNoticeItem | CommonNoticeItem[];

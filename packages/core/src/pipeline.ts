@@ -359,16 +359,24 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
     yamlNode.value = stringifyYaml(fm, { lineWidth: 0, sortMapEntries: false }).trimEnd();
     const files = new Map<string, { data: Buffer; mode?: number }>();
     files.set('SKILL.md', { data: Buffer.from(String(processor.stringify(tree))) });
-    for (const file of (
-      await fg('**/*', { cwd: source, onlyFiles: true, dot: true, followSymbolicLinks: false })
-    ).sort())
-      if (file !== entry && file !== 'SKILL.md') {
-        const bytes = await readFile(path.join(source, file));
-        const data = bytes.includes(0)
-          ? bytes
-          : Buffer.from(replace(normalize(bytes.toString('utf8')), file));
-        files.set(file, { data, mode: (await stat(path.join(source, file))).mode });
-      }
+    const sourceFiles = (
+      await fg('**/*', {
+        cwd: source,
+        onlyFiles: true,
+        dot: true,
+        followSymbolicLinks: false,
+        ignore: config.exclude,
+      })
+    )
+      .filter((file) => file !== entry && file !== 'SKILL.md')
+      .sort();
+    for (const file of sourceFiles) {
+      const bytes = await readFile(path.join(source, file));
+      const data = bytes.includes(0)
+        ? bytes
+        : Buffer.from(replace(normalize(bytes.toString('utf8')), file));
+      files.set(file, { data, mode: (await stat(path.join(source, file))).mode });
+    }
     const baseUrl = config.baseUrl && interpolate(config.baseUrl);
     if (installOptions && applies(installOptions.skills, skill.name)) {
       const file = safePath(installOptions.file ?? DEFAULT_INSTALL_DOC);
@@ -475,7 +483,7 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
       )
         throw new Error(skill.name + ': output missing or out of date');
     } else {
-      const sourceHash = JSON.stringify(await hashFiles(source));
+      const sourceHash = JSON.stringify(await hashFileList(source, [entry, ...sourceFiles].sort()));
       const cacheFile = path.join(config.rootDir, '.loom-cache', skill.name + '.json');
       if (!options.skipCache) {
         try {
@@ -545,16 +553,20 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
   }
   await runHooks(buildEnd, ctx, 'onBuildEnd');
 };
+const hashFileList = async (dir: string, files: string[]): Promise<Record<string, string>> => {
+  const result: Record<string, string> = {};
+  for (const file of files)
+    result[file] = createHash('sha256')
+      .update(await readFile(path.join(dir, file)))
+      .digest('hex');
+  return result;
+};
 export const hashFiles = async (dir: string): Promise<Record<string, string>> => {
   try {
     await access(dir);
   } catch {
     return {};
   }
-  const result: Record<string, string> = {};
-  for (const file of (await fg('**/*', { cwd: dir, onlyFiles: true, dot: true })).sort())
-    result[file] = createHash('sha256')
-      .update(await readFile(path.join(dir, file)))
-      .digest('hex');
-  return result;
+  const files = await fg('**/*', { cwd: dir, onlyFiles: true, dot: true });
+  return hashFileList(dir, files.sort());
 };

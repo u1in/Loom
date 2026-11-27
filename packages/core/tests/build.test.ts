@@ -61,6 +61,24 @@ describe('build', () => {
     await writeFile(path.join(root, 'dist/skills/demo/asset.txt'), 'bad');
     await expect(build(config, { check: true })).rejects.toThrow('out of date');
   });
+  it('excludes workspace files from the output and source fingerprint', async () => {
+    const { root, config, output } = await fixture();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    config.exclude = ['package.json', '**/node_modules/**'];
+    const manifest = path.join(root, 'src/package.json');
+    await writeFile(manifest, '{}');
+    await mkdir(path.join(root, 'src/nested/node_modules'), { recursive: true });
+    await writeFile(path.join(root, 'src/nested/node_modules/dependency.js'), '');
+    await build(config);
+
+    const expectedFiles = ['INSTALL.md', 'SKILL.md', 'asset.txt'];
+    expect(Object.keys(await hashFiles(path.dirname(output)))).toEqual(expectedFiles);
+    await writeFile(manifest, '{"private": true}');
+    await build(config);
+    expect(warn).not.toHaveBeenCalled();
+    await build(config, { check: true });
+    await build(config, { checkDeterminism: true });
+  });
   it('weaves multiple notices in order, adjusts headings and interpolates link targets', async () => {
     const { root, config, output } = await fixture();
     await writeFile(
