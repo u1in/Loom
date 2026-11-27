@@ -116,7 +116,7 @@ loadConfig（jiti 加载，失败时带上文件路径与原始错误）
 几个容易踩的细节：
 
 - **内置 `injections` 先注册**，因此 `text(top)` 的插入位置在公共说明之后；第三方插件若也注册 `before-replace` 变换，内容排在配置注入之后。
-- **`commonNotice` 与 `text(top)` 都插在 frontmatter 之后**，按声明顺序累积，不产生任何 HTML 注释标记。
+- **`commonNotice` 插在正文首个标题之后**，`text(top)` 随后按声明顺序插入。无标题时从 frontmatter 后开始插入。没有公共说明时，`text(top)` 位于 frontmatter 后。不产生任何 HTML 注释标记。
 - **替换只作用于 `text` / `inlineCode` / `code` 节点**与文本资源，不碰 `html` 节点；`files` 用 picomatch 匹配 Skill 内的相对路径（含点文件），文本资源的匹配路径是它在 Skill 目录下的相对路径。
 - **`replace` 的值也会做变量插值**，但不会被后续规则再次替换。
 - **未定义的 `{{VAR}}` 原样保留并告警**，不阻断构建。

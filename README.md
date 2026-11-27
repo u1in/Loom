@@ -141,7 +141,7 @@ skills/pr-review/
 | `plugins` | | `LoomPlugin` 实例数组 |
 | `replacements` | | 字符串或正则替换，可用 `skills` / `files` 限定范围 |
 
-正文顺序固定为：**公共说明 → `text(top)` 按声明顺序 → 作者正文 → `text(bottom)` → 插件追加内容**。文本注入不生成任何 HTML 注释标记，作者自己写的注释会保留。
+有公共说明时，Loom 将它按顺序插在正文的第一个标题之后，再插入 `text(top)`。无标题时从 frontmatter 后开始插入。没有公共说明时，`text(top)` 位于 frontmatter 后。正文末尾依次为 `text(bottom)` 和插件追加内容。文本注入不生成任何 HTML 注释标记，作者自己写的注释会保留。
 
 ## 插件
 

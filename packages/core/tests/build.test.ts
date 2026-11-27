@@ -50,7 +50,7 @@ describe('build', () => {
     expect(md).toMatch(/a:\n\s+b: 1/);
     expect(md.indexOf('Notice demo')).toBeLessThan(md.indexOf('Top 1'));
     expect(md.indexOf('Top 1')).toBeLessThan(md.indexOf('Top 2'));
-    expect(md.indexOf('Top 2')).toBeLessThan(md.indexOf('# Hello'));
+    expect(md.indexOf('# Hello')).toBeLessThan(md.indexOf('Notice demo'));
     expect(await readFile(path.join(root, 'dist/skills/demo/asset.txt'), 'utf8')).toBe(
       'Replaced\n',
     );
@@ -185,6 +185,28 @@ describe('build', () => {
     ).toContain('https://example.com/skills/demo/SKILL.md');
     await build(config, { check: true });
     await build(config, { checkDeterminism: true });
+  });
+  it('inserts notices after the first heading, or after frontmatter without a heading', async () => {
+    const { root, config, output } = await fixture();
+    config.commonNotice = ['Notice one', 'Notice two'];
+    await writeFile(
+      path.join(root, 'src', 'SKILL.md'),
+      '---\nname: demo\nmetadata:\n  version: 1.0.0\n---\n\nIntro\n\n## Title\n\nBody\n',
+    );
+    await build(config);
+    let md = await readFile(output, 'utf8');
+    expect(md.indexOf('Intro')).toBeLessThan(md.indexOf('## Title'));
+    expect(md.indexOf('## Title')).toBeLessThan(md.indexOf('Notice one'));
+    expect(md.indexOf('Notice one')).toBeLessThan(md.indexOf('Notice two'));
+    expect(md.indexOf('Notice two')).toBeLessThan(md.indexOf('Top 1'));
+    expect(md.indexOf('Top 2')).toBeLessThan(md.indexOf('Body'));
+    await writeFile(
+      path.join(root, 'src', 'SKILL.md'),
+      '---\nname: demo\nmetadata:\n  version: 1.0.0\n---\n\nBody without heading\n',
+    );
+    await build(config);
+    md = await readFile(output, 'utf8');
+    expect(md.indexOf('Notice one')).toBeLessThan(md.indexOf('Body without heading'));
   });
   it('runs plugin hooks and transform phases in order', async () => {
     const { config, output } = await fixture();

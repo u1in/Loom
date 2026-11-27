@@ -291,7 +291,9 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
       const notices = Array.isArray(config.commonNotice)
         ? config.commonNotice
         : [config.commonNotice];
-      const firstHeading = tree.children.find((node) => node.type === 'heading');
+      const firstHeadingIndex = tree.children.findIndex((node) => node.type === 'heading');
+      const firstHeading = tree.children[firstHeadingIndex];
+      if (notices.length && firstHeadingIndex !== -1) topPosition = firstHeadingIndex + 1;
       for (const item of notices) {
         const noticeTree = processor.parse(await readContent(item, config.rootDir));
         const headings: number[] = [];
@@ -299,7 +301,9 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
           headings.push(node.depth);
         });
         const automaticShift =
-          firstHeading && headings.length ? firstHeading.depth + 1 - Math.min(...headings) : 0;
+          firstHeading?.type === 'heading' && headings.length
+            ? firstHeading.depth + 1 - Math.min(...headings)
+            : 0;
         const shift =
           typeof item === 'string' ? automaticShift : (item.headingShift ?? automaticShift);
         visit(noticeTree, 'heading', (node) => {
