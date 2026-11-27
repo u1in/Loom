@@ -118,11 +118,11 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
       platform: process.platform,
       arch: process.arch,
       cwd: config.rootDir,
-      loomVersion: '0.3.0',
+      loomVersion: '0.4.0',
     },
     variables: config.variables ?? {},
     logger,
-    loomVersion: '0.3.0',
+    loomVersion: '0.4.0',
   };
   const before: Entry<Transform>[] = [],
     after: Entry<Transform>[] = [],

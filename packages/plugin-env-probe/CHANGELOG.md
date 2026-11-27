@@ -1,5 +1,11 @@
 # @u1in/loom-plugin-env-probe
 
+## 0.4.0
+
+### Minor Changes
+
+- 适配 Loom Core 0.4.x。
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@u1in/loom-test-utils",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "exports": {
     ".": {
@@ -18,7 +18,7 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@u1in/loom-core": "^0.3.0"
+    "@u1in/loom-core": "^0.4.0"
   },
   "devDependencies": {
     "@u1in/loom-core": "workspace:*",
