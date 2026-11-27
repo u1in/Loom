@@ -14,10 +14,6 @@ import {
 } from 'node:fs/promises';
 import fg from 'fast-glob';
 import picomatch from 'picomatch';
-import { unified } from 'unified';
-import parse from 'remark-parse';
-import frontmatter from 'remark-frontmatter';
-import stringify from 'remark-stringify';
 import { visit } from 'unist-util-visit';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type {
@@ -34,11 +30,8 @@ import type {
 } from './types';
 import { validatePlugins } from './plugin';
 import { DEFAULT_INSTALL_DOC, deriveSource, renderInstallDoc } from './install-doc';
+import { parseSkillDocument, processor } from './markdown';
 
-const processor = unified()
-  .use(parse)
-  .use(frontmatter)
-  .use(stringify, { bullet: '-', emphasis: '*', fences: true });
 const normalize = (s: string) => s.replace(/\r\n?/g, '\n');
 const obj = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
@@ -243,10 +236,9 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
       throw new Error(skill.name + ': source and output directories overlap');
     }
     const raw = normalize(await readFile(path.join(source, entry), 'utf8'));
-    let tree = processor.parse(raw);
-    const first = tree.children[0];
-    if (first?.type !== 'yaml') throw new Error(skill.name + ': missing YAML frontmatter');
-    let fm = obj(parseYaml(first.value));
+    const document = parseSkillDocument(raw, skill.name);
+    let tree = document.tree;
+    let fm = obj(document.frontmatter);
     const version = obj(fm.metadata).version;
     if (fm.name !== skill.name)
       throw new Error(skill.name + ': frontmatter name does not match configuration');

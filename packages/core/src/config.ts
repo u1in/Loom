@@ -1,10 +1,13 @@
 import { z } from 'zod';
 import { createJiti } from 'jiti';
 import fg from 'fast-glob';
-import { access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { LoomConfig, LoadedConfig } from './types';
+import { parseSkillDocument } from './markdown';
+const skillName = z.string().regex(/^[a-z0-9][a-z0-9-]*$/);
+const skillFrontmatter = z.object({ name: skillName });
 const content = z.union([z.string(), z.object({ file: z.string() }).strict()]);
 const noticeItem = z.union([
   z.string(),
@@ -35,7 +38,7 @@ const schema = z
       .array(
         z
           .object({
-            name: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+            name: skillName,
             source: z.string().min(1),
             entry: z
               .string()
@@ -46,6 +49,7 @@ const schema = z
       )
       .min(1)
       .optional(),
+    skillsPath: z.string().min(1).optional(),
     output: z.string().min(1).default('.'),
     baseUrl: z
       .string()
@@ -104,6 +108,12 @@ const schema = z
   })
   .strict()
   .superRefine((c, ctx) => {
+    if (c.skills && c.skillsPath)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['skillsPath'],
+        message: 'skills and skillsPath are mutually exclusive',
+      });
     const names = new Set(c.skills?.map((s) => s.name));
     if (c.skills && names.size !== c.skills.length)
       ctx.addIssue({ code: 'custom', path: ['skills'], message: 'Skill names must be unique' });
@@ -161,20 +171,37 @@ export const defineConfig = ((
     input: Promise<LoomConfig> | (() => LoomConfig | Promise<LoomConfig>),
   ): LoomConfig | Promise<LoomConfig>;
 };
-const discoverSkills = async (rootDir: string): Promise<LoadedConfig['skills']> => {
-  const sourceRoot = 'src/skills';
-  const entry = 'SKILL.source.md';
-  const entries = await fg('*/' + entry, {
-    cwd: path.join(rootDir, sourceRoot),
+const readSkillName = async (rootDir: string, file: string): Promise<string> => {
+  const raw = await readFile(path.resolve(rootDir, file), 'utf8');
+  const { frontmatter } = parseSkillDocument(raw, file);
+  const result = skillFrontmatter.safeParse(frontmatter);
+  if (!result.success) throw new Error(file + ': invalid or missing frontmatter name');
+  return result.data.name;
+};
+
+const discoverSkills = async (
+  rootDir: string,
+  skillsPath?: string,
+): Promise<LoadedConfig['skills']> => {
+  const entries = await fg(skillsPath ?? 'src/skills/*/SKILL.source.md', {
+    cwd: rootDir,
     onlyFiles: true,
     followSymbolicLinks: false,
   });
   if (!entries.length)
-    throw new Error('No skills found. Expected ' + sourceRoot + '/<name>/' + entry);
-  return entries.sort().map((file) => {
-    const name = path.posix.dirname(file);
-    return { name, source: sourceRoot + '/' + name, entry };
-  });
+    throw new Error(
+      skillsPath
+        ? 'No skills found for skillsPath: ' + skillsPath
+        : 'No skills found. Expected src/skills/<name>/SKILL.source.md',
+    );
+  return Promise.all(
+    entries.sort().map(async (file) => {
+      const source = path.posix.dirname(file);
+      const entry = path.posix.basename(file);
+      const name = skillsPath ? await readSkillName(rootDir, file) : path.posix.basename(source);
+      return { name, source, entry };
+    }),
+  );
 };
 let configImportCounter = 0;
 export const loadConfig = async (cwd = process.cwd()): Promise<LoadedConfig> => {
@@ -203,8 +230,8 @@ export const loadConfig = async (cwd = process.cwd()): Promise<LoadedConfig> => 
     const input = typeof mod.default === 'function' ? mod.default() : mod.default;
     const config = await defineConfig(await input);
     const rootDir = path.dirname(file);
-    const skills = config.skills ?? (await discoverSkills(rootDir));
-    if (!config.skills) schema.parse({ ...config, skills });
+    const skills = config.skills ?? (await discoverSkills(rootDir, config.skillsPath));
+    if (!config.skills) schema.parse({ ...config, skillsPath: undefined, skills });
     return { ...config, skills, output: config.output ?? '.', rootDir };
   } catch (e) {
     throw new Error('Failed to load config ' + file + ': ' + String(e), { cause: e });

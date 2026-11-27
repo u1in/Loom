@@ -126,7 +126,8 @@ skills/pr-review/
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
-| `skills` | | 省略时发现 `src/skills/*/SKILL.source.md`；可显式提供 `{ name, source, entry? }[]`，`name` 唯一且匹配 `^[a-z0-9][a-z0-9-]*$` |
+| `skills` | | 显式列出 `{ name, source, entry? }[]`，`name` 唯一且匹配 `^[a-z0-9][a-z0-9-]*$` |
+| `skillsPath` | | 匹配 Skill 入口文件的 glob，以配置目录为基准，与 `skills` 互斥 |
 | `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义插值变量，不可与 `name` / `skill` / `version` 重名 |
@@ -263,9 +264,17 @@ variables: { BASE: 'https://example.com' },
 
 ### 源码目录和入口
 
-省略 `skills` 时，Loom 在配置目录下查找 `src/skills/*/SKILL.source.md`，以一级子目录名作为 Skill 名，默认输出到 `skills/<name>/SKILL.md`。没有符合约定的入口时，构建会报错。
+省略 `skills` 和 `skillsPath` 时，Loom 在配置目录下查找 `src/skills/*/SKILL.source.md`，以一级子目录名作为 Skill 名，默认输出到 `skills/<name>/SKILL.md`。没有符合约定的入口时，构建会报错。
 
-使用其他目录或入口文件名时，可以显式配置 `skills`：
+要从工作区子包发现 Skill，可配置入口文件的 glob：
+
+```ts
+skillsPath: 'packages/*/src/SKILL.source.md',
+```
+
+Loom 读取匹配文件的 frontmatter `name` 作为 Skill 名，以入口所在目录为源码目录。glob 无匹配项或匹配项没有有效名称时会报错。
+
+需要逐项指定源码时，可显式配置 `skills`：
 
 ```ts
 skills: [{ name: 'demo', source: 'src/skills/demo', entry: 'SKILL.source.md' }],

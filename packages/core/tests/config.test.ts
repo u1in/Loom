@@ -71,6 +71,60 @@ describe('configuration', () => {
     await writeFile(path.join(source, 'SKILL.source.md'), '# Skill');
     await expect(loadConfig(root)).rejects.toThrow('Unknown skill: missing');
   });
+  it('builds skillsPath matches using each entry name and source directory', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'loom-config-'));
+    roots.push(root);
+    const skillsPath = 'packages/{first,second}/src/SKILL.source.md';
+    await writeFile(
+      path.join(root, 'loom.config.mjs'),
+      'export default ' + JSON.stringify({ skillsPath, installDoc: { skills: ['review'] } }),
+    );
+    for (const [directory, name] of [
+      ['second', 'release'],
+      ['ignored', 'ignored'],
+      ['first', 'review'],
+    ] as const) {
+      const source = path.join(root, 'packages', directory, 'src');
+      await mkdir(source, { recursive: true });
+      await writeFile(
+        path.join(source, 'SKILL.source.md'),
+        '---\r\nname: ' + name + '\r\nmetadata:\r\n  version: 1.0.0\r\n---\r\n\r\n# Skill\r\n',
+      );
+      await writeFile(path.join(source, 'asset.txt'), name);
+    }
+
+    const config = await loadConfig(root);
+    expect(config.skills).toEqual([
+      { name: 'review', source: 'packages/first/src', entry: 'SKILL.source.md' },
+      { name: 'release', source: 'packages/second/src', entry: 'SKILL.source.md' },
+    ]);
+    await build(config, { skill: 'review' });
+    await expect(readFile(path.join(root, 'skills/review/asset.txt'), 'utf8')).resolves.toBe(
+      'review',
+    );
+    await expect(readFile(path.join(root, 'skills/review/SKILL.md'), 'utf8')).resolves.toContain(
+      'name: review',
+    );
+  });
+  it('reports unmatched globs, invalid matches, and conflicting discovery settings', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'loom-config-'));
+    roots.push(root);
+    const skillsPath = 'packages/*/src/SKILL.source.md';
+    await writeFile(
+      path.join(root, 'loom.config.mjs'),
+      'export default ' + JSON.stringify({ skillsPath }),
+    );
+    await expect(loadConfig(root)).rejects.toThrow('No skills found for skillsPath: ' + skillsPath);
+    const source = path.join(root, 'packages/demo/src');
+    await mkdir(source, { recursive: true });
+    await writeFile(path.join(source, 'SKILL.source.md'), '---\nname: 42\n---\n\n# Skill\n');
+    await expect(loadConfig(root)).rejects.toThrow(
+      'packages/demo/src/SKILL.source.md: invalid or missing frontmatter name',
+    );
+    expect(() => defineConfig({ skillsPath, skills: [{ name: 'demo', source: 'demo' }] })).toThrow(
+      'skills and skillsPath are mutually exclusive',
+    );
+  });
   it('accepts safe custom entries and rejects paths outside the skill', () => {
     expect(
       defineConfig({
