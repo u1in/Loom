@@ -12,10 +12,11 @@ pnpm --filter demo-repo test    # loom build --check-determinism
 ```text
 demo-repo/
 ├── loom.config.ts
-├── partials/notice.md
-├── src/skills/
-│   ├── pr-review/SKILL.md
-│   └── release-notes/SKILL.md
+├── src/
+│   ├── partials/notice.md
+│   └── skills/
+│       ├── pr-review/SKILL.md
+│       └── release-notes/SKILL.md
 └── skills/            # 纳入版本管理的示例构建产物
 ```
 
@@ -33,7 +34,7 @@ export default defineConfig({
     { name: 'pr-review', source: 'src/skills/pr-review' },
     { name: 'release-notes', source: 'src/skills/release-notes' },
   ],
-  commonNotice: { file: 'partials/notice.md' },
+  commonNotice: { file: 'src/partials/notice.md' },
   variables: { PROJECT_NAME: 'Loom Demo' },
   injections: {
     text: [{ id: 'footer', position: 'bottom', content: 'Built for {{PROJECT_NAME}}.' }],
@@ -47,7 +48,7 @@ export default defineConfig({
 | 能力 | 观察点 |
 |---|---|
 | 版本注入 | 产物 `metadata.version` 与源码一致（`1.0.0` / `0.1.0`） |
-| 公共说明 | `pr-review` 首段是 `This skill belongs to Loom Demo.` |
+| 公共说明 | `pr-review` 标题后是 `This skill belongs to Loom Demo.` |
 | 跳过公共说明 | `release-notes` 的 frontmatter 带 `metadata.loom.commonNotice: false`，产物没有这段 |
 | 变量插值 | 公共说明、正文里的 `{{PROJECT_NAME}}` 都变成 `Loom Demo` |
 | 文本注入 | 末尾出现 `Built for Loom Demo.`（`bottom` 位置） |
@@ -82,9 +83,9 @@ metadata:
       env: []
 ---
 
-This skill belongs to Loom Demo.
-
 # PR Review
+
+This skill belongs to Loom Demo.
 
 Inspect the changes in Loom Demo and report actionable findings.
 
@@ -95,7 +96,7 @@ Built for Loom Demo.
 - 工具: git >=2.30（必需）
 ```
 
-顺序固定为：公共说明 → 作者正文 → `bottom` 注入 → 插件追加内容。`release-notes` 只是少了第一段。
+顺序固定为：作者标题 → 公共说明 → 作者正文 → `bottom` 注入 → 插件追加内容。`release-notes` 只是少了第一段。
 
 ## 确定性
 

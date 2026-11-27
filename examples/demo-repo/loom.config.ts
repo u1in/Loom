@@ -6,7 +6,7 @@ export default defineConfig({
     { name: 'pr-review', source: 'src/skills/pr-review' },
     { name: 'release-notes', source: 'src/skills/release-notes' },
   ],
-  commonNotice: { file: 'partials/notice.md' },
+  commonNotice: { file: 'src/partials/notice.md' },
   variables: { PROJECT_NAME: 'Loom Demo' },
   injections: {
     text: [{ id: 'footer', position: 'bottom', content: 'Built for {{PROJECT_NAME}}.' }],
