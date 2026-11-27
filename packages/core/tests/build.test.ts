@@ -70,7 +70,11 @@ describe('build', () => {
     );
     await writeFile(path.join(root, 'second.md'), '# Second\n');
     config.variables = { ...config.variables, BASE: 'https://example.com' };
-    config.commonNotice = [{ file: 'notice.md', headingShift: 1 }, { file: 'second.md' }, 'Last'];
+    config.commonNotice = [
+      { file: 'notice.md', headingShift: 1 },
+      { file: 'second.md', headingShift: 0 },
+      'Last',
+    ];
     await build(config);
     const md = await readFile(output, 'utf8');
     expect(md).toContain('## First');
@@ -83,7 +87,52 @@ describe('build', () => {
     expect(md.indexOf('Last')).toBeLessThan(md.indexOf('Top 1'));
     await build(config, { checkDeterminism: true });
     await writeFile(path.join(root, 'notice.md'), '###### Too deep\n');
-    await expect(build(config)).rejects.toThrow('exceeds level 6');
+    await expect(build(config)).rejects.toThrow('exceeds valid levels');
+  });
+  it('aligns common headings with the first skill heading and preserves their relative depth', async () => {
+    const { root, config, output } = await fixture();
+    config.injections = undefined;
+    await writeFile(path.join(root, 'notice.md'), '## Notice\n\n### Detail\n');
+    config.commonNotice = [{ file: 'notice.md' }];
+    for (const [heading, expected] of [
+      ['#', '##'],
+      ['##', '###'],
+      ['###', '####'],
+    ]) {
+      await writeFile(
+        path.join(root, 'src', 'SKILL.md'),
+        '---\nname: demo\nmetadata:\n  version: 1.0.0\n---\n\n' + heading + ' Skill\n',
+      );
+      await build(config);
+      const md = await readFile(output, 'utf8');
+      expect(md).toContain(expected + ' Notice');
+      expect(md).toContain(expected + '# Detail');
+    }
+    await writeFile(
+      path.join(root, 'src', 'SKILL.md'),
+      '---\nname: demo\nmetadata:\n  version: 1.0.0\n---\n\nNo heading\n',
+    );
+    await build(config);
+    expect(await readFile(output, 'utf8')).toContain('## Notice');
+    await writeFile(
+      path.join(root, 'src', 'SKILL.md'),
+      '---\nname: demo\nmetadata:\n  version: 1.0.0\n---\n\n###### Skill\n',
+    );
+    await expect(build(config)).rejects.toThrow('exceeds valid levels');
+  });
+  it('builds a custom source entry without distributing it', async () => {
+    const { root, config, output } = await fixture();
+    await writeFile(
+      path.join(root, 'src', 'SKILL.source.md'),
+      '---\nname: demo\nmetadata:\n  version: 1.0.0\n---\n\n# Source\n',
+    );
+    config.skills = [{ name: 'demo', source: 'src', entry: 'SKILL.source.md' }];
+    await build(config);
+    expect(await readFile(output, 'utf8')).toContain('# Source');
+    expect(Object.keys(await hashFiles(path.dirname(output)))).not.toContain('SKILL.source.md');
+    await build(config, { check: true });
+    config.skills = [{ name: 'demo', source: 'src', entry: '../escape.md' }];
+    await expect(build(config)).rejects.toThrow('invalid source entry');
   });
   it('runs plugin hooks and transform phases in order', async () => {
     const { config, output } = await fixture();

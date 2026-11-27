@@ -18,7 +18,14 @@ const schema = z
     skills: z
       .array(
         z
-          .object({ name: z.string().regex(/^[a-z0-9][a-z0-9-]*$/), source: z.string().min(1) })
+          .object({
+            name: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+            source: z.string().min(1),
+            entry: z
+              .string()
+              .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*\.md$/)
+              .optional(),
+          })
           .strict(),
       )
       .min(1),

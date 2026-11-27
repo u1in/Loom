@@ -234,4 +234,14 @@ commonNotice: [
 variables: { BASE: 'https://example.com' },
 ```
 
-`headingShift` 是 0 到 5 的整数，作用于该文件中的所有 Markdown 标题。调整后超过六级时构建失败，默认不调整。相对路径以配置文件目录为准。正文、链接、图片及引用链接的目标支持 `{{BASE}}` 等变量插值。设置 `metadata.loom.commonNotice: false` 时跳过全部公共说明。
+默认以 Skill 正文的第一个标题为基准，将每段公共说明中最浅的标题调整为其下一级，其余标题保持相对层级。Skill 或公共说明没有标题时保持原样。`headingShift` 可显式指定 0 到 5 的整数，覆盖自动调整。调整后超出一级至六级时构建失败。相对路径以配置文件目录为准。正文、链接、图片及引用链接的目标支持 `{{BASE}}` 等变量插值。设置 `metadata.loom.commonNotice: false` 时跳过全部公共说明。
+
+### 自定义源码入口
+
+每个 Skill 可使用 `entry` 指定源码目录内的 Markdown 文件名：
+
+```ts
+skills: [{ name: 'demo', source: 'src/skills/demo', entry: 'SKILL.source.md' }],
+```
+
+省略时读取 `SKILL.md`。入口文件不直接复制到产物，Loom 将处理后的内容写成标准的 `SKILL.md`。文件名不允许包含目录或路径穿越。

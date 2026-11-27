@@ -18,7 +18,7 @@ cli
     }
   });
 cli.help();
-cli.version('0.2.0');
+cli.version('0.3.0');
 try {
   cli.parse();
 } catch (e) {

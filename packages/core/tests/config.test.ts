@@ -21,6 +21,17 @@ describe('configuration', () => {
       expect(config.output).toBe('dist');
     }
   });
+  it('accepts safe custom entries and rejects paths outside the skill', () => {
+    expect(
+      defineConfig({
+        version: 1,
+        skills: [{ name: 'demo', source: 'src', entry: 'SKILL.source.md' }],
+      }),
+    ).toMatchObject({ skills: [{ entry: 'SKILL.source.md' }] });
+    expect(() =>
+      defineConfig({ version: 1, skills: [{ name: 'demo', source: 'src', entry: '../SKILL.md' }] }),
+    ).toThrow();
+  });
   it('reloads mjs configuration for determinism checks', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'loom-config-'));
     roots.push(root);

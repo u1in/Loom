@@ -1,5 +1,12 @@
 # @u1in/loom-core
 
+## 0.3.0
+
+### Minor Changes
+
+- 公共说明标题默认根据 Skill 的首个标题自动对齐。
+- 支持为各 Skill 指定源码入口文件。
+
 ## 0.2.0
 
 ### Minor Changes

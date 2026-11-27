@@ -3,7 +3,7 @@ export type Content = string | { file: string };
 export type CommonNoticeItem = string | { file: string; headingShift?: number };
 export interface LoomConfig {
   version: 1;
-  skills: { name: string; source: string }[];
+  skills: { name: string; source: string; entry?: string }[];
   output?: string;
   commonNotice?: CommonNoticeItem | CommonNoticeItem[];
   variables?: Record<string, string>;

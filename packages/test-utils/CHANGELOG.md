@@ -1,5 +1,11 @@
 # @u1in/loom-test-utils
 
+## 0.3.0
+
+### Minor Changes
+
+- 更新 core 兼容版本至 0.3.x。
+
 ## 0.2.0
 
 ### Minor Changes

@@ -124,11 +124,11 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
       platform: process.platform,
       arch: process.arch,
       cwd: config.rootDir,
-      loomVersion: '0.2.0',
+      loomVersion: '0.3.0',
     },
     variables: config.variables ?? {},
     logger,
-    loomVersion: '0.2.0',
+    loomVersion: '0.3.0',
   };
   const before: Entry<Transform>[] = [],
     after: Entry<Transform>[] = [],
@@ -221,7 +221,10 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
   for (const skill of skills) {
     const source = path.resolve(config.rootDir, skill.source),
       target = path.join(output, 'skills', skill.name);
-    const raw = normalize(await readFile(path.join(source, 'SKILL.md'), 'utf8'));
+    const entry = skill.entry ?? 'SKILL.md';
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*\.md$/.test(entry))
+      throw new Error(skill.name + ': invalid source entry: ' + entry);
+    const raw = normalize(await readFile(path.join(source, entry), 'utf8'));
     let tree = processor.parse(raw);
     const first = tree.children[0];
     if (first?.type !== 'yaml') throw new Error(skill.name + ': missing YAML frontmatter');
@@ -273,12 +276,21 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
       const notices = Array.isArray(config.commonNotice)
         ? config.commonNotice
         : [config.commonNotice];
+      const firstHeading = tree.children.find((node) => node.type === 'heading');
       for (const item of notices) {
         const noticeTree = processor.parse(await readContent(item, config.rootDir));
-        const shift = typeof item === 'string' ? 0 : (item.headingShift ?? 0);
+        const headings: number[] = [];
+        visit(noticeTree, 'heading', (node) => {
+          headings.push(node.depth);
+        });
+        const automaticShift =
+          firstHeading && headings.length ? firstHeading.depth + 1 - Math.min(...headings) : 0;
+        const shift =
+          typeof item === 'string' ? automaticShift : (item.headingShift ?? automaticShift);
         visit(noticeTree, 'heading', (node) => {
           const depth = node.depth + shift;
-          if (depth > 6) throw new Error(skill.name + ': common notice heading exceeds level 6');
+          if (depth < 1 || depth > 6)
+            throw new Error(skill.name + ': common notice heading exceeds valid levels 1–6');
           node.depth = depth as typeof node.depth;
         });
         tree.children.splice(topPosition, 0, ...noticeTree.children);
@@ -336,7 +348,7 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
     for (const file of (
       await fg('**/*', { cwd: source, onlyFiles: true, dot: true, followSymbolicLinks: false })
     ).sort())
-      if (file !== 'SKILL.md') {
+      if (file !== entry && file !== 'SKILL.md') {
         const bytes = await readFile(path.join(source, file));
         const data = bytes.includes(0)
           ? bytes
