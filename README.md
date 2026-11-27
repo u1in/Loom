@@ -130,7 +130,7 @@ skills/pr-review/
 | `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义插值变量，不可与 `name` / `skill` / `version` 重名 |
-| `installDoc` | | 为每个 Skill 生成安装文档，`true` 或 `{ file, source, template, text, skills }` |
+| `installDoc` | | 默认 `true`，为每个 Skill 生成安装文档；`false` 关闭，也可传配置对象 |
 | `injections.text` | | 文本注入，`position` 为 `top` 或 `bottom`，参与插值与替换 |
 | `injections.metadata` | | 写入 `metadata.loom.injections.<path>`，支持点号路径 |
 | `plugins` | | `LoomPlugin` 实例数组 |
@@ -287,11 +287,7 @@ baseUrl: 'https://example.com/skills/{{name}}/',
 
 ### 安装文档
 
-启用 `installDoc: true` 后，Loom 为每个 Skill 生成一句面向当前 harness 的中文安装指引，默认输出到 `INSTALL.md`。
-
-```ts
-installDoc: true,
-```
+Loom 默认在每个 Skill 的 `INSTALL.md` 中生成一句面向当前 harness 的中文安装指引。设置 `installDoc: false` 可关闭生成。
 
 生成的 Markdown 形如：
 
@@ -299,7 +295,7 @@ installDoc: true,
 请使用 `skills` CLI，从 [https://github.com/OWNER/REPO/tree/skills-release/skills/pr-review](https://github.com/OWNER/REPO/tree/skills-release/skills/pr-review) 将 `pr-review` 安装到当前 harness。
 ```
 
-Loom 从 GitLab 或 GitHub 的 raw 发布地址推导安装链接，保留分支或标签以及 Skill 目录。使用 CDN 或其他来源时，设置 `installDoc.source` 指定安装地址，支持 `{{name}}` 等变量。缺少可推导的来源时，构建会告警，默认文案提示从当前目录安装。
+Loom 从 GitLab 或 GitHub 的 raw 发布地址推导安装链接，保留分支或标签以及 Skill 目录。使用 CDN 或其他来源时，设置 `installDoc.source` 指定安装地址，支持 `{{name}}` 等变量。缺少安装来源时，文案提示从当前目录安装。配置了无法推导的 `baseUrl` 时，构建会告警。
 
 可选的 `template` 或 `text` 可覆盖默认文案。模板支持 `{{name}}`、`{{skill}}`、`{{version}}`、`{{description}}`、`{{source}}` 和配置中的 `variables`。`file` 可改文件名，`skills` 可限定生效范围。
 

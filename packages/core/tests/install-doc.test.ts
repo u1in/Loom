@@ -15,7 +15,7 @@ afterEach(async () => {
 const skillSource =
   '---\nname: demo\ndescription: 演示用 Skill\nmetadata:\n  version: 1.0.0\n---\n\n# Demo\n';
 
-const fixture = async (installDoc: LoadedConfig['installDoc']) => {
+const fixture = async (installDoc?: LoadedConfig['installDoc']) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'loom-install-'));
   dirs.push(root);
   await mkdir(path.join(root, 'src'));
@@ -94,8 +94,8 @@ describe('renderInstallDoc', () => {
 });
 
 describe('installDoc build', () => {
-  it('emits a one-line INSTALL.md with the interpolated publishing address', async () => {
-    const { root, config } = await fixture(true);
+  it('emits INSTALL.md by default with the interpolated publishing address', async () => {
+    const { root, config } = await fixture();
     config.baseUrl = 'https://gitlab.example.com/group/repo/-/raw/{{REF}}/skills/{{name}}/';
     config.variables = { REF: 'skills-release' };
     await build(config);
@@ -108,6 +108,17 @@ describe('installDoc build', () => {
     const first = await hashFiles(path.join(root, 'dist'));
     await build(config);
     expect(await hashFiles(path.join(root, 'dist'))).toEqual(first);
+  });
+
+  it('omits the generated document after disabling installDoc', async () => {
+    const { root, config } = await fixture();
+    const file = path.join(root, 'dist/skills/demo/INSTALL.md');
+    await build(config);
+    await expect(readFile(file, 'utf8')).resolves.toContain('安装到当前 harness');
+    config.installDoc = false;
+    await build(config);
+    await expect(readFile(file)).rejects.toMatchObject({ code: 'ENOENT' });
+    await build(config, { check: true });
   });
 
   it('applies a template with variables and skill scoping', async () => {

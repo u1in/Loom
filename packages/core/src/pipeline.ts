@@ -196,7 +196,8 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
         });
     },
   };
-  const installOptions = config.installDoc === true ? {} : config.installDoc;
+  const installDoc = config.installDoc ?? true;
+  const installOptions = installDoc === true ? {} : installDoc;
   for (const plugin of [builtin, ...plugins])
     try {
       await plugin.apply(apiFor(plugin.name));
@@ -388,7 +389,7 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
         const installSource = installOptions.source
           ? interpolate(installOptions.source)
           : deriveSource(baseUrl);
-        if (!installSource)
+        if (!installSource && baseUrl)
           logger.warn(
             skill.name + ': install source is unknown, set installDoc.source to provide it',
           );

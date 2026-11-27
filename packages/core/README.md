@@ -70,7 +70,7 @@ loom --help
 | `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义变量，键不可为 `name` / `skill` / `version` |
-| `installDoc` | | `true` 或配置对象，为每个 Skill 生成安装文档 |
+| `installDoc` | | 默认 `true`；`false` 关闭生成，也可传配置对象 |
 | `injections.text` | | `{ id, position, skills?, content }[]`，`id` 唯一 |
 | `injections.metadata` | | `{ skills?, path, value }[]`，`value` 必须可 JSON 序列化 |
 | `plugins` | | `LoomPlugin` 实例数组 |
@@ -86,9 +86,9 @@ loom --help
 
 ## 安装文档
 
-`installDoc: true` 为每个 Skill 生成一句面向当前 harness 的中文安装指引，默认输出到 `INSTALL.md`。
+Loom 默认在每个 Skill 的 `INSTALL.md` 中生成一句面向当前 harness 的中文安装指引。
 
-- Loom 从 GitLab 或 GitHub 的 raw 发布地址推导安装链接，保留分支或标签以及 Skill 目录。`source` 可覆盖推导结果，支持 `{{name}}` 等变量。缺少来源时，构建会告警，默认文案提示从当前目录安装。
+- Loom 从 GitLab 或 GitHub 的 raw 发布地址推导安装链接，保留分支或标签以及 Skill 目录。`source` 可覆盖推导结果，支持 `{{name}}` 等变量。缺少安装来源时，文案提示从当前目录安装。配置了无法推导的 `baseUrl` 时，构建会告警。
 - `file` 改输出文件名，必须是 Skill 根目录下的 `.md` 文件名。
 - `template` 指定模板文件，`text` 直接内联模板，二者互斥。模板支持 `{{name}}`、`{{skill}}`、`{{version}}`、`{{description}}`、`{{source}}` 与 `variables`。未定义变量原样保留并告警。
 - `skills` 限定生效范围。
