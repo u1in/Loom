@@ -1,0 +1,40 @@
+{
+  "name": "@u1in/loom-test-utils",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@u1in/loom-core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@u1in/loom-core": "workspace:*",
+    "@types/mdast": "^4.0.4"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/u1in/Loom.git",
+    "directory": "packages/test-utils"
+  },
+  "bugs": {
+    "url": "https://github.com/u1in/Loom/issues"
+  },
+  "homepage": "https://github.com/u1in/Loom#readme"
+}

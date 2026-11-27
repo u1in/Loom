@@ -1,0 +1,253 @@
+# Loom
+
+**用 TypeScript 配置、按线性 AST 管线预编译 Skill 的构建框架。**
+
+开发者只写 Skill 的功能源码，Loom 在构建期把 `SKILL.md` 解析成 Markdown AST，依次执行版本注入、公共说明注入、插件变换、字符串替换，再重组为自包含、可单独安装、可被 `npx skills` 原生发现的产物。
+
+```bash
+pnpm add -D @u1in/loom-core
+npx loom build
+```
+
+---
+
+## 它解决什么问题
+
+Skill 的源码散落在多个目录，每个都要有版本号、免责说明、环境前置检查、项目名占位符。这些重复内容要么手抄、要么写脚本正则替换。Loom 的做法是**把重复内容变成配置和构建期变换**，让源码只管功能本身：
+
+- 版本号只在源码 frontmatter 写一次，构建时校验并回写产物。
+- 公共说明从 `partials/notice.md` 统一注入，不污染每个 Skill 的源码。
+- `{{PROJECT_NAME}}` 这类占位符在构建期插值，源码保持通用。
+- 插件可以往 AST 里塞节点、改 metadata、发射脚本文件，能力与内置功能完全对等。
+
+## 核心特性
+
+| 特性 | 说明 |
+|---|---|
+| 线性纯函数管线 | 变换顺序写死在管线里，不存在洋葱模型的“环绕”语义，也没有事件总线 |
+| TypeScript 配置 | `defineConfig` 提供类型推断，zod 做运行时校验，拼错字段会直接报错 |
+| 插件一等公民 | 内置 `injections` 与第三方插件走同一套 `PluginAPI` |
+| 确定性构建 | 相同源码 + 相同配置 + 相同版本，两次构建产物逐字节一致 |
+| 安全写出 | 先写临时目录，替换前备份旧产物；替换失败时尝试恢复 |
+| 产物自检 | 校验 frontmatter、版本、Markdown 相对链接，断链即构建失败 |
+| 二进制安全 | 通过 `\0` 字节判定二进制，只复制不替换；文本统一规范化为 LF |
+
+## 快速开始
+
+要求 Node.js ≥ 20、pnpm ≥ 9。
+
+### 1. 准备目录
+
+```text
+my-skills/
+├── loom.config.ts
+├── partials/
+│   └── notice.md
+└── src/skills/
+    ├── pr-review/
+    │   ├── SKILL.md
+    │   └── references/checklist.md
+    └── release-notes/
+        └── SKILL.md
+```
+
+`SKILL.md` 的 frontmatter 必须包含 `name`（与配置里的 `name` 一致）和 `metadata.version`（合法 SemVer）：
+
+```markdown
+---
+name: pr-review
+description: Review changes for correctness and regressions.
+metadata:
+  version: 1.0.0
+---
+
+# PR Review
+
+Inspect the changes in {{PROJECT_NAME}} and report actionable findings.
+```
+
+### 2. 写配置
+
+```ts
+// loom.config.ts
+import { defineConfig } from '@u1in/loom-core';
+import preflight from '@u1in/loom-plugin-preflight';
+
+export default defineConfig({
+  version: 1,
+  skills: [
+    { name: 'pr-review', source: 'src/skills/pr-review' },
+    { name: 'release-notes', source: 'src/skills/release-notes' },
+  ],
+  commonNotice: { file: 'partials/notice.md' },
+  variables: { PROJECT_NAME: 'MyProject' },
+  injections: {
+    text: [{ id: 'footer', position: 'bottom', content: 'Built for {{PROJECT_NAME}}.' }],
+    metadata: [{ path: 'category', value: 'review' }],
+  },
+  plugins: [preflight({ tools: [{ name: 'git', version: '>=2.30', required: true }] })],
+  replacements: [{ search: 'EXAMPLE_PROJECT', replace: 'MyProject' }],
+});
+```
+
+配置支持 `.ts` / `.mts` / `.js` / `.mjs`，相对路径一律以配置文件所在目录为基准。
+
+### 3. 构建
+
+```bash
+npx loom build
+```
+
+```text
+✔ pr-review@1.0.0 → dist/skills/pr-review
+✔ release-notes@0.1.0 → dist/skills/release-notes
+```
+
+产物形如：
+
+```text
+dist/skills/pr-review/
+├── SKILL.md            # 已注入版本、公共说明、插件内容并完成替换
+└── references/
+    └── checklist.md    # 文本资源同样应用替换
+```
+
+`dist/skills/pr-review/` 可以整体复制到任何兼容宿主中独立使用。
+
+## CLI
+
+| 命令 | 作用 |
+|---|---|
+| `loom build` | 构建全部 Skill |
+| `loom build --skill pr-review` | 只构建指定 Skill，名称不存在时报错 |
+| `loom build --out ./custom-dist` | 覆盖输出目录（相对配置文件目录解析） |
+| `loom build --check` | 不写盘，校验现有产物是否与当前源码一致 |
+| `loom build --check-determinism` | 在临时目录连续构建两次并比较哈希 |
+| `loom --version` / `loom --help` | 版本与帮助 |
+
+退出码：`0` 成功，`1` 构建失败，`2` 参数解析错误。任一 Skill 失败即整体失败，已完成的其他 Skill 产物保留。
+
+## 配置一览
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `version` | ✓ | 固定为字面量 `1` |
+| `skills` | ✓ | `{ name, source }[]`，`name` 唯一且匹配 `^[a-z0-9][a-z0-9-]*$` |
+| `output` | | 输出目录，默认 `dist` |
+| `commonNotice` | | 公共说明，字符串或 `{ file }` |
+| `variables` | | 自定义插值变量，不可与 `name` / `skill` / `version` 重名 |
+| `injections.text` | | 文本注入，`position` 为 `top` 或 `bottom`，参与插值与替换 |
+| `injections.metadata` | | 写入 `metadata.loom.injections.<path>`，支持点号路径 |
+| `plugins` | | `LoomPlugin` 实例数组 |
+| `replacements` | | 字符串或正则替换，可用 `skills` / `files` 限定范围 |
+
+正文顺序固定为：**公共说明 → `text(top)` 按声明顺序 → 作者正文 → `text(bottom)` → 插件追加内容**。文本注入不生成任何 HTML 注释标记，作者自己写的注释会保留。
+
+## 插件
+
+| 包 | 作用 |
+|---|---|
+| `@u1in/loom-core` | 构建管线、PluginAPI、CLI、`defineConfig`，内置 `injections` |
+| `@u1in/loom-plugin-preflight` | 注入“使用前检查”章节与 `metadata.loom.preflight`，可选发射检查脚本 |
+| `@u1in/loom-plugin-env-probe` | 探测构建环境，支持 `print` / `metadata` / `file` 三种模式 |
+| `@u1in/loom-test-utils` | 插件作者用的测试上下文与注册收集器 |
+
+插件以实例形式传入配置，核心不做模块名解析——用 `import` 和工厂函数自己完成这一步。插件运行在本机进程中，**必须信任其代码**，MVP 不提供沙箱。
+
+```ts
+import type { LoomPlugin } from '@u1in/loom-core';
+
+const hello: LoomPlugin = {
+  name: 'hello',
+  apply: (api) => {
+    api.addTransform((tree) => {
+      tree.children.push({ type: 'paragraph', children: [{ type: 'text', value: 'Hello' }] });
+      return tree;
+    });
+  },
+};
+```
+
+`addTransform` 默认注册在 `before-replace` 阶段（内容参与插值与替换）；显式传 `after-replace` 则跳过替换。插件不得修改 `name`、`metadata.version`、`metadata.loom.commonNotice`，命中即构建失败。
+
+## 确定性
+
+Loom 的核心承诺是：**核心管线与内置插件的产物逐字节可复现**。为此构建期不写时间戳、不写随机值、不保留 mtime，所有文件遍历按路径排序，换行统一为 `\n`，`remark-stringify` 与 `yaml.stringify` 使用固定选项。
+
+`loom build --check-determinism` 会连续构建两次并比较文件哈希，适合放进 CI。破坏确定性的典型来源是配置里的随机值/时间戳，以及 `env-probe` 的 `metadata`、`file` 模式——这类插件必须在自己的 README 中声明风险。
+
+## 发布 Skill
+
+`npx skills` 对 GitHub 来源按**目录哈希**判断更新，`metadata.version` 只用于展示，**不是更新依据**。因此发布路径和产物文件集合必须稳定。
+
+```bash
+loom build
+git checkout -B skills-release
+rm -rf skills && cp -r dist/skills ./skills
+git add skills
+git commit -m "release: 2026-11-27"
+git push origin skills-release
+```
+
+用户安装：
+
+```bash
+npx skills add https://github.com/OWNER/REPO/tree/skills-release/skills/pr-review
+```
+
+旧版本通过 Git tag 或 commit 安装。注意：源码改动但 `metadata.version` 未变时，构建只**警告**不阻断，产物仍会更新，`npx skills` 也能靠哈希发现变化。
+
+## 仓库结构
+
+```text
+.
+├── packages/
+│   ├── core/                 # @u1in/loom-core：配置、管线、PluginAPI、CLI
+│   ├── plugin-preflight/     # @u1in/loom-plugin-preflight
+│   ├── plugin-env-probe/     # @u1in/loom-plugin-env-probe
+│   └── test-utils/           # @u1in/loom-test-utils
+├── examples/demo-repo/       # 端到端示例，也是样例验收基准
+└── .changeset/               # 多包版本与 changelog 管理
+```
+
+构建缓存位于各项目根目录的 `.loom-cache/<skill>.json`（记录版本与源码哈希，仅用于生成“源码变了但版本没变”的告警），已加入 `.gitignore`。
+
+## 本地开发
+
+```bash
+pnpm install
+pnpm build              # 按依赖拓扑构建 packages/*
+pnpm test               # 运行全部包测试
+pnpm typecheck          # 源码、测试与 workspace 配置类型检查
+pnpm check              # lint + format:check + typecheck
+pnpm lint               # ESLint
+pnpm format             # Prettier 写入
+pnpm --filter demo-repo build                 # 端到端构建
+pnpm --filter demo-repo test                  # 连跑两次比较确定性
+```
+
+发布流程：
+
+```bash
+pnpm changeset          # 记录变更与变更级别
+pnpm version-packages   # 更新版本号、替换 workspace:*、生成 CHANGELOG
+pnpm release            # 发布 packages/*
+```
+
+示例项目 `demo-repo` 在 changesets 的 `ignore` 列表中，不参与发布。
+
+## 发布 0.1.0 前检查
+
+四个公开包使用 `@u1in/loom-*` 命名空间。发布前确认 npm 账号权限、GitHub 仓库和 MIT 许可证配置：
+
+1. 在 Node.js 20 或更高版本下运行 `pnpm install --frozen-lockfile`、`pnpm build`、`pnpm check` 和 `pnpm test`。
+2. 使用 `pnpm pack` 打包各子包，在干净目录安装并验证 CLI、导入和示例构建。
+3. 检查各包版本及 peer dependency。当前版本已是 0.1.0；首次发布前不要运行会增加版本号的 `pnpm version-packages`。
+4. 确认源码、工作区和远程仓库后，按依赖顺序发布包，并验证从 npm 安装。
+5. 将示例产物发布到 GitHub 的 `skills-release` 分支，用 `npx skills add`、`check` 和 `update` 验证兼容性。
+
+`--check-determinism` 只比较同一机器上连续两次构建；读取环境的插件可能在其他环境生成不同产物。
+
+## 子包文档
+
+各包 README：[core](packages/core/README.md) · [plugin-preflight](packages/plugin-preflight/README.md) · [plugin-env-probe](packages/plugin-env-probe/README.md) · [test-utils](packages/test-utils/README.md)

@@ -1,0 +1,11 @@
+node_modules
+dist
+.loom-cache
+
+# Keep the demo Skill outputs as examples.
+!/examples/demo-repo/dist/
+/examples/demo-repo/dist/*
+!/examples/demo-repo/dist/skills/
+
+# Personal agent instructions.
+/AGENTS.local.md

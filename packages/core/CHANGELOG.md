@@ -1,0 +1,9 @@
+# @u1in/loom-core
+
+## 0.1.0
+
+### Minor Changes
+
+- 首次发布 Skill AST 构建管线、TypeScript 配置、CLI 和插件 API。
+- 支持公共说明、文本及 metadata 注入、变量插值、资源替换、产物校验和确定性检查。
+- 支持暂存产物，并在替换失败时尝试恢复旧产物。

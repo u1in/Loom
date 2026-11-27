@@ -1,0 +1,14 @@
+{
+  "name": "demo-repo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "loom build",
+    "test": "loom build --check-determinism",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@u1in/loom-core": "workspace:*",
+    "@u1in/loom-plugin-preflight": "workspace:*"
+  }
+}
