@@ -99,20 +99,20 @@ npx loom build
 ```
 
 ```text
-✔ pr-review@1.0.0 → dist/skills/pr-review
-✔ release-notes@0.1.0 → dist/skills/release-notes
+✔ pr-review@1.0.0 → skills/pr-review
+✔ release-notes@0.1.0 → skills/release-notes
 ```
 
 产物形如：
 
 ```text
-dist/skills/pr-review/
+skills/pr-review/
 ├── SKILL.md            # 已注入版本、公共说明、插件内容并完成替换
 └── references/
     └── checklist.md    # 文本资源同样应用替换
 ```
 
-`dist/skills/pr-review/` 可以整体复制到任何兼容宿主中独立使用。
+`skills/pr-review/` 可以整体复制到任何兼容宿主中独立使用。
 
 ## CLI
 
@@ -133,7 +133,7 @@ dist/skills/pr-review/
 |---|---|---|
 | `version` | ✓ | 固定为字面量 `1` |
 | `skills` | ✓ | `{ name, source }[]`，`name` 唯一且匹配 `^[a-z0-9][a-z0-9-]*$` |
-| `output` | | 输出目录，默认 `dist` |
+| `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义插值变量，不可与 `name` / `skill` / `version` 重名 |
 | `injections.text` | | 文本注入，`position` 为 `top` 或 `bottom`，参与插值与替换 |
@@ -183,7 +183,6 @@ Loom 的核心承诺是：**核心管线与内置插件的产物逐字节可复�
 ```bash
 loom build
 git checkout -B skills-release
-rm -rf skills && cp -r dist/skills ./skills
 git add skills
 git commit -m "release: 2026-11-27"
 git push origin skills-release
@@ -276,3 +275,15 @@ skills: [{ name: 'demo', source: 'src/skills/demo', entry: 'SKILL.source.md' }],
 ```
 
 省略时读取 `SKILL.md`。入口文件不直接复制到产物，Loom 将处理后的内容写成标准的 `SKILL.md`。文件名不允许包含目录或路径穿越。
+
+### Markdown 链接地址
+
+设置 `baseUrl` 后，Skill 产物中 Markdown 文件的相对链接、图片和引用链接会解析为绝对地址：
+
+```ts
+baseUrl: 'https://example.com/skills/{{name}}/',
+```
+
+`baseUrl` 是每个 Skill 发布目录的 HTTP(S) 地址，可使用 `{{name}}` 等变量。子目录中的 Markdown 链接相对于该文件解析，查询参数和章节锚点保留。仅含 `#锚点` 的链接、带协议的地址以及以 `//` 开头的地址保持原样。根路径链接按网站根目录解析。未设置时保留原链接并继续检查本地相对链接。
+
+链接转为绝对地址后，访问引用内容需要访问对应网站，包括链接到随 Skill 分发资源的情况。

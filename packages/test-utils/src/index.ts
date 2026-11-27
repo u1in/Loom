@@ -12,7 +12,7 @@ export const createTestBuildContext = (overrides: Partial<BuildContext> = {}): B
   config: {
     version: 1,
     skills: [{ name: 'test', source: '.' }],
-    output: 'dist',
+    output: '.',
     rootDir: process.cwd(),
   },
   env: {

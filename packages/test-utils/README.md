@@ -86,7 +86,7 @@ const ctx = {
   skillName: 'demo',
   version: '1.0.0',
   variables: {},
-  config: { version: 1, skills: [], output: 'dist', rootDir: process.cwd() },
+  config: { version: 1, skills: [], output: '.', rootDir: process.cwd() },
   logger: { info() {}, warn() {} },
   interpolate: (s: string) => s,
 } as TransformContext;

@@ -29,7 +29,16 @@ const schema = z
           .strict(),
       )
       .min(1),
-    output: z.string().min(1).default('dist'),
+    output: z.string().min(1).default('.'),
+    baseUrl: z
+      .string()
+      .url()
+      .refine((value) => {
+        if (!URL.canParse(value)) return false;
+        const url = new URL(value);
+        return ['http:', 'https:'].includes(url.protocol) && !url.search && !url.hash;
+      }, 'baseUrl must be an HTTP(S) URL without query or fragment')
+      .optional(),
     commonNotice: z.union([noticeItem, z.array(noticeItem)]).optional(),
     variables: z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string()).optional(),
     injections: z
@@ -159,7 +168,7 @@ export const loadConfig = async (cwd = process.cwd()): Promise<LoadedConfig> => 
     };
     const input = typeof mod.default === 'function' ? mod.default() : mod.default;
     const config = await defineConfig(await input);
-    return { ...config, output: config.output ?? 'dist', rootDir: path.dirname(file) };
+    return { ...config, output: config.output ?? '.', rootDir: path.dirname(file) };
   } catch (e) {
     throw new Error('Failed to load config ' + file + ': ' + String(e), { cause: e });
   }

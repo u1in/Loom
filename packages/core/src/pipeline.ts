@@ -224,6 +224,21 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
     const entry = skill.entry ?? 'SKILL.md';
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]*\.md$/.test(entry))
       throw new Error(skill.name + ': invalid source entry: ' + entry);
+    const sourceRelative = path.relative(source, target);
+    const targetRelative = path.relative(target, source);
+    if (
+      !options.check &&
+      (!sourceRelative ||
+        (!sourceRelative.startsWith('..' + path.sep) &&
+          sourceRelative !== '..' &&
+          !path.isAbsolute(sourceRelative)) ||
+        !targetRelative ||
+        (!targetRelative.startsWith('..' + path.sep) &&
+          targetRelative !== '..' &&
+          !path.isAbsolute(targetRelative)))
+    ) {
+      throw new Error(skill.name + ': source and output directories overlap');
+    }
     const raw = normalize(await readFile(path.join(source, entry), 'utf8'));
     let tree = processor.parse(raw);
     const first = tree.children[0];
@@ -373,9 +388,29 @@ export const build = async (config: LoadedConfig, options: BuildOptions = {}): P
     if (reserved(outputFm) !== reserved(fm)) {
       throw new Error(skill.name + ': output changed reserved fields');
     }
-    for (const [file, { data }] of files)
+    for (const [file, value] of files)
       if (file.endsWith('.md')) {
-        const links = processor.parse(data.toString('utf8'));
+        const links = processor.parse(value.data.toString('utf8'));
+        if (config.baseUrl) {
+          const base = interpolate(config.baseUrl);
+          const directoryUrl = new URL(base.endsWith('/') ? base : base + '/');
+          const documentUrl = new URL(
+            file.split('/').map(encodeURIComponent).join('/'),
+            directoryUrl,
+          );
+          let changed = false;
+          visit(links, (node) => {
+            if (
+              (node.type === 'link' || node.type === 'image' || node.type === 'definition') &&
+              node.url &&
+              !/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(node.url)
+            ) {
+              node.url = new URL(node.url, documentUrl).href;
+              changed = true;
+            }
+          });
+          if (changed) value.data = Buffer.from(String(processor.stringify(links)));
+        }
         const pending: string[] = [];
         visit(links, (n) => {
           if (

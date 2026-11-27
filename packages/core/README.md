@@ -24,7 +24,7 @@ export default defineConfig({
 
 ```bash
 npx loom build
-# ✔ pr-review@1.0.0 → dist/skills/pr-review
+# ✔ pr-review@1.0.0 → skills/pr-review
 ```
 
 源目录至少包含一个 `SKILL.md`，frontmatter 中的 `name` 必须与配置一致，`metadata.version` 必须是合法 SemVer：
@@ -70,7 +70,7 @@ loom --help
 |---|---|---|
 | `version` | ✓ | 字面量 `1` |
 | `skills` | ✓ | `{ name, source }[]`，非空，`name` 唯一，格式 `^[a-z0-9][a-z0-9-]*$` |
-| `output` | | 输出目录，默认 `dist` |
+| `output` | | 输出目录，默认 `.`，产物位于 `skills/` |
 | `commonNotice` | | 字符串、文件或其有序数组，文件可配置 `headingShift` |
 | `variables` | | 自定义变量，键不可为 `name` / `skill` / `version` |
 | `injections.text` | | `{ id, position, skills?, content }[]`，`id` 唯一 |
@@ -245,3 +245,15 @@ skills: [{ name: 'demo', source: 'src/skills/demo', entry: 'SKILL.source.md' }],
 ```
 
 省略时读取 `SKILL.md`。入口文件不直接复制到产物，Loom 将处理后的内容写成标准的 `SKILL.md`。文件名不允许包含目录或路径穿越。
+
+### Markdown 链接地址
+
+设置 `baseUrl` 后，Skill 产物中 Markdown 文件的相对链接、图片和引用链接会解析为绝对地址：
+
+```ts
+baseUrl: 'https://example.com/skills/{{name}}/',
+```
+
+`baseUrl` 是每个 Skill 发布目录的 HTTP(S) 地址，可使用 `{{name}}` 等变量。子目录中的 Markdown 链接相对于该文件解析，查询参数和章节锚点保留。仅含 `#锚点` 的链接、带协议的地址以及以 `//` 开头的地址保持原样。根路径链接按网站根目录解析。未设置时保留原链接并继续检查本地相对链接。
+
+链接转为绝对地址后，访问引用内容需要访问对应网站，包括链接到随 Skill 分发资源的情况。

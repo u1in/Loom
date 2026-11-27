@@ -16,10 +16,10 @@ demo-repo/
 ├── src/skills/
 │   ├── pr-review/SKILL.md
 │   └── release-notes/SKILL.md
-└── dist/skills/            # 纳入版本管理的示例构建产物
+└── skills/            # 纳入版本管理的示例构建产物
 ```
 
-`dist/skills/` 是供查看的示例产物，源码或配置变更后请重新构建并一同更新；不要手动修改产物。`.loom-cache/` 仍被 Git 忽略。
+`skills/` 是供查看的示例产物，源码或配置变更后请重新构建并一同更新；不要手动修改产物。`.loom-cache/` 仍被 Git 忽略。
 
 ## 配置演示了什么
 
@@ -59,8 +59,8 @@ export default defineConfig({
 ## 预期产物
 
 ```text
-dist/skills/pr-review/SKILL.md
-dist/skills/release-notes/SKILL.md
+skills/pr-review/SKILL.md
+skills/release-notes/SKILL.md
 ```
 
 `pr-review` 的产物结构：

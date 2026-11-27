@@ -18,7 +18,7 @@ describe('configuration', () => {
       );
       const config = await loadConfig(root);
       expect(config.rootDir).toBe(root);
-      expect(config.output).toBe('dist');
+      expect(config.output).toBe('.');
     }
   });
   it('accepts safe custom entries and rejects paths outside the skill', () => {
@@ -31,6 +31,20 @@ describe('configuration', () => {
     expect(() =>
       defineConfig({ version: 1, skills: [{ name: 'demo', source: 'src', entry: '../SKILL.md' }] }),
     ).toThrow();
+  });
+  it('validates baseUrl as an HTTP URL without a query or fragment', () => {
+    const skills = [{ name: 'demo', source: 'src' }];
+    expect(
+      defineConfig({ version: 1, skills, baseUrl: 'https://example.com/skills/{{name}}/' }),
+    ).toMatchObject({ baseUrl: 'https://example.com/skills/{{name}}/' });
+    for (const baseUrl of [
+      'relative/path',
+      'file:///tmp/',
+      'https://example.com/?q=1',
+      'https://example.com/#part',
+    ]) {
+      expect(() => defineConfig({ version: 1, skills, baseUrl })).toThrow();
+    }
   });
   it('reloads mjs configuration for determinism checks', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'loom-config-'));

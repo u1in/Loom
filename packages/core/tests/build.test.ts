@@ -134,6 +134,58 @@ describe('build', () => {
     config.skills = [{ name: 'demo', source: 'src', entry: '../escape.md' }];
     await expect(build(config)).rejects.toThrow('invalid source entry');
   });
+  it('rejects output that overlaps the source directory', async () => {
+    const { root, config } = await fixture();
+    config.output = '.';
+    config.skills = [{ name: 'demo', source: 'skills/demo' }];
+    await mkdir(path.join(root, 'skills/demo'), { recursive: true });
+    await writeFile(
+      path.join(root, 'skills/demo/SKILL.md'),
+      '---\nname: demo\nmetadata:\n  version: 1.0.0\n---\n\n# Source\n',
+    );
+    await expect(build(config)).rejects.toThrow('source and output directories overlap');
+    expect(await readFile(path.join(root, 'skills/demo/SKILL.md'), 'utf8')).toContain('# Source');
+  });
+  it('resolves Markdown links and images against the base URL for each file', async () => {
+    const { root, config, output } = await fixture();
+    config.commonNotice = undefined;
+    config.injections = undefined;
+    config.baseUrl = 'https://example.com/skills/{{name}}';
+    await writeFile(
+      path.join(root, 'src', 'SKILL.md'),
+      '---\nname: demo\nmetadata:\n  version: 1.0.0\n---\n\n# Demo\n\n[guide](references/guide.md?x=1#part)\n\n![img](assets/image.png)\n\n[anchor](#demo)\n\n[external](https://other.test/a)\n\n[root](/legal)\n\n[cdn](//cdn.example.com/x)\n\n[mail](mailto:user@example.com)\n\n[reference][ref]\n\n[ref]: references/guide.md\n',
+    );
+    await mkdir(path.join(root, 'src', 'references'));
+    await writeFile(
+      path.join(root, 'src', 'references', 'guide.md'),
+      '# Guide\n\n[back](../SKILL.md)\n\n[image](../assets/image.png)\n',
+    );
+    config.plugins = [
+      {
+        name: 'emit-doc',
+        apply: (api) =>
+          api.onEmitFiles((ctx) => ctx.emit('references/generated.md', '[home](../SKILL.md)\n')),
+      },
+    ];
+    await build(config);
+    const md = await readFile(output, 'utf8');
+    expect(md).toContain('https://example.com/skills/demo/references/guide.md?x=1#part');
+    expect(md).toContain('https://example.com/skills/demo/assets/image.png');
+    expect(md).toContain('[anchor](#demo)');
+    expect(md).toContain('https://other.test/a');
+    expect(md).toContain('[root](https://example.com/legal)');
+    expect(md).toContain('[cdn](//cdn.example.com/x)');
+    expect(md).toContain('[mail](mailto:user@example.com)');
+    expect(md).toContain('[ref]: https://example.com/skills/demo/references/guide.md');
+    const guide = await readFile(path.join(root, 'dist/skills/demo/references/guide.md'), 'utf8');
+    expect(guide).toContain('https://example.com/skills/demo/SKILL.md');
+    expect(guide).toContain('https://example.com/skills/demo/assets/image.png');
+    expect(
+      await readFile(path.join(root, 'dist/skills/demo/references/generated.md'), 'utf8'),
+    ).toContain('https://example.com/skills/demo/SKILL.md');
+    await build(config, { check: true });
+    await build(config, { checkDeterminism: true });
+  });
   it('runs plugin hooks and transform phases in order', async () => {
     const { config, output } = await fixture();
     const calls: string[] = [];
